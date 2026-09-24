@@ -10,6 +10,9 @@
 
 Live messaging, voice notes, files, photos and video, stickers, typing indicators, online presence,
 read receipts, friends and groups —
+=======
+Live messaging, typing indicators, online presence, read receipts, friends and image sharing —
+
 fully bilingual (English / Arabic with real RTL), in light and dark themes.
 
 [**Live demo**](https://hamsa-seven.vercel.app)
