@@ -10,12 +10,9 @@
 
 Live messaging, voice notes, files, photos and video, stickers, typing indicators, online presence,
 read receipts, friends and groups —
-=======
-Live messaging, typing indicators, online presence, read receipts, friends and image sharing —
-
 fully bilingual (English / Arabic with real RTL), in light and dark themes.
 
-[**Live demo**](https://hamsa-seven.vercel.app)
+[**Live demo**](https://hamsa-seven.vercel.app) · [Design system](https://claude.ai/artifact/6tYWvRDFXbqZE5QsoW8Sfz) · [Report a bug](https://github.com/MostafaGaber135/Hamsa/issues)
 
 ![React](https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
@@ -43,7 +40,8 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 - Real-time messages, no refresh — sent optimistically, then confirmed by the server
 - Delivery states you can read at a glance: sending, sent, read, failed with one-click retry
 - Read receipts and unread counts that update live
-- Photos and videos, documents (PDFs open in the browser), voice notes and your live location —
+- Voice notes with a live waveform while recording, saved with the message for playback
+- Photos and videos, documents (PDFs open in the browser) and your current location —
   with a preview before sending, drag-and-drop and paste
 - A full-screen viewer for photos, videos and PDFs, with next / previous and download
 - Hamsa's own sticker pack, an emoji picker, per-conversation drafts, and an unread count in the browser tab
@@ -52,6 +50,7 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 
 **Presence**
 - Online status and "last seen"
+- Push notifications for new messages, even when Hamsa is closed (Web Push, installable as an app)
 - "Sara is typing…" in the chat, the header and the conversation list
 
 **People**
@@ -61,6 +60,7 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 
 **Account**
 - Email + password and Google sign-in (one button signs up *and* signs in)
+- Email verification and "forgot password", both with a 6-digit code (a link works too)
 - Profile page: name, username with a live availability check, photo upload (cropped and resized in the browser), password change
 - Google profile photo imported automatically
 
@@ -152,6 +152,11 @@ The security rules are covered by SQL tests in [`supabase/tests`](supabase/tests
 
 **One message table, many kinds.** Text, photos, video, voice, files, location and stickers share one `messages` table: a `kind` column and a small `attachment` JSON (path, name, size, duration, coordinates). New kinds need no new tables, and Realtime delivers them all the same way.
 
+**Notifications without a server.** A database webhook calls an Edge Function on every new message;
+it looks up the recipients (skipping the sender and anyone who muted the chat), sends Web Push, and
+forgets browsers that have unsubscribed. The service worker skips the pop-up when Hamsa is already open
+and focused, and clicking a notification opens that exact chat.
+
 **Text direction per message and per keystroke.** The composer sets `dir` from the first letter you type instead of using `unicode-bidi: plaintext`, which puts the caret on the wrong side on mobile browsers.
 
 ---
@@ -197,6 +202,31 @@ to `index.html`, so pages like `/privacy` work on refresh.
 
 > For quick local testing, you can turn off **Authentication → Sign In / Providers → Email → Confirm email**.
 
+### Email verification and password reset (optional)
+
+Supabase's built-in email only sends to your own team, so real users need your own SMTP:
+
+1. **Authentication → Emails → SMTP Settings**: turn on custom SMTP. With Gmail, create an
+   [App Password](https://myaccount.google.com/apppasswords) and use host `smtp.gmail.com`, port `465`,
+   your Gmail address as the username and sender, and the app password.
+2. **Authentication → Emails → Templates**: paste
+   [`confirm-signup.html`](supabase/email-templates/confirm-signup.html) into *Confirm signup* and
+   [`reset-password.html`](supabase/email-templates/reset-password.html) into *Reset password*.
+3. **Authentication → Sign In / Providers → Email**: turn **Confirm email** on.
+
+### Push notifications (optional)
+
+1. Generate keys: `npx web-push generate-vapid-keys`.
+2. Add `VITE_VAPID_PUBLIC_KEY=<public key>` to `.env.local` and to Vercel.
+3. **Edge Functions → Deploy a new function → Via editor**: name it `send-push`, paste
+   [`supabase/functions/send-push/index.ts`](supabase/functions/send-push/index.ts), deploy, and turn
+   **Verify JWT** off in its settings (it checks its own secret instead).
+4. **Edge Functions → Secrets**: add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
+   `VAPID_SUBJECT` (`mailto:you@example.com`) and `WEBHOOK_SECRET` (any long random string).
+5. **Database → Webhooks → Create**: table `messages`, event *Insert*, type *Supabase Edge Functions*,
+   function `send-push`, and an HTTP header `x-webhook-secret` with the same secret.
+6. In Hamsa: **My profile → Notifications → Turn on**. On iPhone, first *Share → Add to Home Screen*.
+
 ### Google sign-in (optional)
 
 1. In Google Cloud Console → **Google Auth Platform**, create a **Web application** client.
@@ -225,6 +255,8 @@ src/
 └── types/                App types and generated database types
 supabase/
 ├── schema.sql            The complete database in one file
+├── functions/send-push/  Edge Function that sends push notifications
+├── email-templates/      Verification and reset emails with the 6-digit code
 ├── migrations/           The same schema, step by step
 └── tests/                SQL tests for the security rules
 ```
@@ -235,7 +267,6 @@ Each feature keeps its own `api.ts` (Supabase calls), `queries.ts` (TanStack Que
 
 ## Roadmap
 
-- [ ] Browser notifications for new messages in background tabs
 - [ ] Unit tests (Vitest) and end-to-end tests (Playwright) in CI
 - [ ] Message reactions and replies
 

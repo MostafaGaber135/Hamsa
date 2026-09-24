@@ -27,6 +27,8 @@ export interface Attachment {
   size?: number
   mime?: string
   durationMs?: number
+  /** Voice notes: loudness bars (0–100) recorded with the audio. */
+  waveform?: number[]
   lat?: number
   lng?: number
 }

@@ -1,18 +1,22 @@
 import { CircleAlert, Languages, MailCheck, Moon, Sun } from 'lucide-react'
-import { useId, useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { BrandMark } from '@/components/ui/BrandMark'
 import { Button, IconButton } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/TextField'
+import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
 import { supabase } from '@/lib/supabase'
 import type { Theme } from '@/lib/theme'
 
-type Mode = 'signIn' | 'signUp'
+type Mode = 'signIn' | 'signUp' | 'verify' | 'forgot' | 'reset'
 
 interface LoginPageProps {
   theme: Theme
   onToggleTheme: () => void
 }
+
+const linkButton =
+  'rounded-md font-semibold text-accent hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring'
 
 export function LoginPage({ theme, onToggleTheme }: LoginPageProps) {
   const { t, lang, setLang } = useLocale()
@@ -20,30 +24,102 @@ export function LoginPage({ theme, onToggleTheme }: LoginPageProps) {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [sentTo, setSentTo] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const errorId = useId()
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
+  function go(next: Mode) {
+    setMode(next)
     setError(null)
+    setInfo(null)
+    setCode('')
+    setPassword('')
+    setConfirm('')
+  }
+
+  async function run(action: () => Promise<void>) {
+    setError(null)
+    setInfo(null)
     setBusy(true)
+    try {
+      await action()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
 
-    const { data, error } =
-      mode === 'signIn'
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({
-            email,
-            password,
-            // Read by the handle_new_user trigger to fill in profiles.full_name.
-            options: { data: { full_name: fullName.trim() } },
-          })
+  const fail = (e: { message: string } | null) => {
+    if (e) throw new Error(e.message)
+  }
 
-    setBusy(false)
-    if (error) return setError(error.message)
-    // With "Confirm email" on, sign-up returns no session until the link is clicked.
-    if (mode === 'signUp' && !data.session) setSentTo(email)
+  // ---- each screen's submit ----
+
+  const signIn = () =>
+    run(async () => {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error?.code === 'email_not_confirmed') {
+        // Send a fresh code and take them straight to the code screen.
+        await supabase.auth.resend({ type: 'signup', email })
+        setMode('verify')
+        setInfo(t.authFlow.notConfirmed)
+        return
+      }
+      fail(error)
+    })
+
+  const signUp = () =>
+    run(async () => {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        // Read by the handle_new_user trigger to fill in profiles.full_name.
+        options: { data: { full_name: fullName.trim() }, emailRedirectTo: window.location.origin },
+      })
+      fail(error)
+      // With "Confirm email" on, there's no session until the code is entered.
+      if (!data.session) go('verify')
+    })
+
+  const verify = () =>
+    run(async () => {
+      const { error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: 'email' })
+      fail(error)
+    })
+
+  const resend = () =>
+    run(async () => {
+      const { error } =
+        mode === 'reset'
+          ? await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+          : await supabase.auth.resend({ type: 'signup', email })
+      fail(error)
+      setInfo(t.authFlow.resent)
+    })
+
+  const sendResetCode = () =>
+    run(async () => {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+      fail(error)
+      go('reset')
+    })
+
+  const resetPassword = () =>
+    run(async () => {
+      if (password !== confirm) throw new Error(t.authFlow.mismatch)
+      // The code signs you in for this one purpose; then the new password is saved.
+      const { error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: 'recovery' })
+      fail(error)
+      const { error: updateError } = await supabase.auth.updateUser({ password })
+      fail(updateError)
+    })
+
+  function submit(e: FormEvent) {
+    e.preventDefault()
+    ;({ signIn, signUp, verify, forgot: sendResetCode, reset: resetPassword })[mode]()
   }
 
   async function signInWithGoogle() {
@@ -55,11 +131,45 @@ export function LoginPage({ theme, onToggleTheme }: LoginPageProps) {
     if (error) setError(error.message)
   }
 
-  function switchMode() {
-    setMode((m) => (m === 'signIn' ? 'signUp' : 'signIn'))
-    setError(null)
-    setSentTo(null)
+  // ---- what each screen shows ----
+
+  const titles: Record<Mode, string> = {
+    signIn: t.auth.signInTitle,
+    signUp: t.auth.signUpTitle,
+    verify: t.authFlow.verifyTitle,
+    forgot: t.authFlow.forgotTitle,
+    reset: t.authFlow.resetTitle,
   }
+  const subtitles: Record<Mode, string> = {
+    signIn: t.auth.subtitle,
+    signUp: t.auth.subtitle,
+    verify: t.authFlow.verifyBody(email),
+    forgot: t.authFlow.forgotBody,
+    reset: t.authFlow.resetBody(email),
+  }
+  const submitLabels: Record<Mode, string> = {
+    signIn: t.auth.signIn,
+    signUp: t.auth.signUp,
+    verify: t.authFlow.verify,
+    forgot: t.authFlow.sendCode,
+    reset: t.authFlow.savePassword,
+  }
+
+  const codeField = (
+    <TextField
+      label={t.authFlow.code}
+      hint={t.authFlow.codeHint}
+      value={code}
+      onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+      inputMode="numeric"
+      autoComplete="one-time-code"
+      maxLength={10}
+      dir="ltr"
+      required
+      autoFocus
+      className="text-center font-mono text-title-3 tracking-[0.4em] rtl:text-center"
+    />
+  )
 
   return (
     <div className="flex min-h-dvh flex-col bg-canvas">
@@ -74,86 +184,112 @@ export function LoginPage({ theme, onToggleTheme }: LoginPageProps) {
 
       <main className="flex flex-1 items-center justify-center px-4 pb-10">
         <div className="w-full max-w-sm rounded-3xl bg-surface p-6 shadow-md sm:p-8">
-          <BrandMark size={40} />
-          <h1 className={lang === 'ar' ? 'mt-5 text-title-ar text-ink' : 'mt-5 text-title-2 text-ink'}>
-            {mode === 'signIn' ? t.auth.signInTitle : t.auth.signUpTitle}
-          </h1>
-          <p className="mt-1 text-body text-ink-muted">{t.auth.subtitle}</p>
+          {mode === 'verify' ? <MailCheck size={40} strokeWidth={1.5} className="text-accent" aria-hidden /> : <BrandMark size={40} />}
+          <h1 className={lang === 'ar' ? 'mt-5 text-title-ar text-ink' : 'mt-5 text-title-2 text-ink'}>{titles[mode]}</h1>
+          <p className="mt-1 text-body text-ink-muted">{subtitles[mode]}</p>
 
-          {sentTo ? (
-            <div role="status" className="mt-6 flex gap-3 rounded-2xl bg-accent-soft p-4 text-body text-ink">
-              <MailCheck size={20} strokeWidth={1.75} className="shrink-0 text-accent" aria-hidden />
-              <p>{t.auth.checkEmail(sentTo)}</p>
-            </div>
-          ) : (
+          {(mode === 'signIn' || mode === 'signUp') && (
             <>
               <Button variant="secondary" size="lg" className="mt-6 w-full" onClick={signInWithGoogle}>
                 <GoogleMark />
                 {t.auth.google}
               </Button>
-
               <div className="my-5 flex items-center gap-3 text-caption text-ink-subtle" aria-hidden>
                 <span className="h-px flex-1 bg-line" />
                 {t.auth.or}
                 <span className="h-px flex-1 bg-line" />
               </div>
+            </>
+          )}
 
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                {mode === 'signUp' && (
-                  <TextField
-                    label={t.auth.fullName}
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    autoComplete="name"
-                    required
-                    maxLength={60}
-                  />
-                )}
+          <form onSubmit={submit} className={cn('flex flex-col gap-4', mode !== 'signIn' && mode !== 'signUp' && 'mt-6')}>
+            {mode === 'signUp' && (
+              <TextField
+                label={t.auth.fullName}
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                autoComplete="name"
+                required
+                maxLength={60}
+              />
+            )}
+
+            {(mode === 'signIn' || mode === 'signUp' || mode === 'forgot') && (
+              <TextField
+                label={t.auth.email}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                dir="ltr"
+                required
+              />
+            )}
+
+            {(mode === 'verify' || mode === 'reset') && codeField}
+
+            {(mode === 'signIn' || mode === 'signUp' || mode === 'reset') && (
+              <div className="flex flex-col gap-1.5">
                 <TextField
-                  label={t.auth.email}
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  dir="ltr"
-                  required
-                />
-                <TextField
-                  label={t.auth.password}
-                  hint={mode === 'signUp' ? t.auth.passwordHint : undefined}
+                  label={mode === 'reset' ? t.authFlow.newPassword : t.auth.password}
+                  hint={mode !== 'signIn' ? t.auth.passwordHint : undefined}
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete={mode === 'signIn' ? 'current-password' : 'new-password'}
-                  minLength={mode === 'signUp' ? 8 : undefined}
+                  minLength={mode === 'signIn' ? undefined : 8}
                   dir="ltr"
                   required
-                  aria-describedby={error ? errorId : undefined}
                 />
-
-                {error && (
-                  <p id={errorId} role="alert" className="flex gap-2 rounded-xl bg-danger-soft px-3 py-2 text-body text-danger">
-                    <CircleAlert size={18} strokeWidth={1.75} className="mt-px shrink-0" aria-hidden />
-                    <span dir="auto">{error}</span>
-                  </p>
+                {mode === 'signIn' && (
+                  <button type="button" onClick={() => go('forgot')} className={cn(linkButton, 'self-end text-caption')}>
+                    {t.authFlow.forgot}
+                  </button>
                 )}
+              </div>
+            )}
 
-                <Button type="submit" size="lg" disabled={busy} className="mt-1 w-full">
-                  {mode === 'signIn' ? t.auth.signIn : t.auth.signUp}
-                </Button>
-              </form>
-            </>
-          )}
+            {mode === 'reset' && (
+              <TextField
+                label={t.authFlow.confirmPassword}
+                type="password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                autoComplete="new-password"
+                minLength={8}
+                dir="ltr"
+                required
+              />
+            )}
+
+            {error && <Note tone="danger">{error}</Note>}
+            {info && !error && <Note tone="info">{info}</Note>}
+
+            <Button type="submit" size="lg" disabled={busy} className="mt-1 w-full">
+              {submitLabels[mode]}
+            </Button>
+
+            {(mode === 'verify' || mode === 'reset') && (
+              <button type="button" onClick={resend} disabled={busy} className={cn(linkButton, 'self-center text-body')}>
+                {t.authFlow.resend}
+              </button>
+            )}
+          </form>
 
           <p className="mt-6 text-center text-body text-ink-muted">
-            {mode === 'signIn' ? t.auth.toSignUp : t.auth.toSignIn}{' '}
-            <button
-              type="button"
-              onClick={switchMode}
-              className="rounded-md font-semibold text-accent hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-            >
-              {mode === 'signIn' ? t.auth.switchToSignUp : t.auth.switchToSignIn}
-            </button>
+            {mode === 'signIn' ? (
+              <>
+                {t.auth.toSignUp}{' '}
+                <button type="button" onClick={() => go('signUp')} className={linkButton}>{t.auth.switchToSignUp}</button>
+              </>
+            ) : mode === 'signUp' ? (
+              <>
+                {t.auth.toSignIn}{' '}
+                <button type="button" onClick={() => go('signIn')} className={linkButton}>{t.auth.switchToSignIn}</button>
+              </>
+            ) : (
+              <button type="button" onClick={() => go('signIn')} className={linkButton}>{t.authFlow.backToSignIn}</button>
+            )}
           </p>
         </div>
       </main>
@@ -167,6 +303,21 @@ export function LoginPage({ theme, onToggleTheme }: LoginPageProps) {
         </a>
       </footer>
     </div>
+  )
+}
+
+function Note({ tone, children }: { tone: 'danger' | 'info'; children: ReactNode }) {
+  return (
+    <p
+      role={tone === 'danger' ? 'alert' : 'status'}
+      className={cn(
+        'flex gap-2 rounded-xl px-3 py-2 text-body',
+        tone === 'danger' ? 'bg-danger-soft text-danger' : 'bg-accent-soft text-ink',
+      )}
+    >
+      <CircleAlert size={18} strokeWidth={1.75} className="mt-px shrink-0" aria-hidden />
+      <span dir="auto">{children}</span>
+    </p>
   )
 }
 

@@ -10,6 +10,9 @@ import { STICKERS, isKnownSticker, stickerUrl } from './stickers'
 /** Only one voice note plays at a time. */
 let playing: HTMLAudioElement | null = null
 
+/** For voice notes recorded before waveforms were saved: a gentle made-up shape. */
+const FALLBACK_BARS = Array.from({ length: 48 }, (_, i) => 30 + Math.round(25 * Math.abs(Math.sin(i * 0.7)) + 15 * Math.abs(Math.sin(i * 1.9))))
+
 export function VoicePlayer({ message, out }: { message: Message; out: boolean }) {
   const { t, locale } = useLocale()
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -17,6 +20,8 @@ export function VoicePlayer({ message, out }: { message: Message; out: boolean }
   const [position, setPosition] = useState(0)
   // WebM recordings often report no duration until fully played, so use the recorded one.
   const durationMs = message.attachment?.durationMs ?? 0
+  const bars = message.attachment?.waveform?.length ? message.attachment.waveform : FALLBACK_BARS
+  const progress = durationMs ? Math.min(1, position / durationMs) : 0
 
   useEffect(() => {
     const audio = audioRef.current
@@ -53,22 +58,40 @@ export function VoicePlayer({ message, out }: { message: Message; out: boolean }
         {isPlaying ? <Pause size={18} fill="currentColor" aria-hidden /> : <Play size={18} fill="currentColor" className="ms-0.5" aria-hidden />}
       </button>
       <div className="min-w-0 flex-1">
-        <input
-          type="range"
-          min={0}
-          max={Math.max(1, durationMs)}
-          step={100}
-          value={Math.min(position, durationMs)}
-          aria-label={t.rich.voice}
-          aria-valuetext={formatDuration(position, locale)}
-          onChange={(e) => {
-            const ms = Number(e.target.value)
-            setPosition(ms)
-            if (audioRef.current) audioRef.current.currentTime = ms / 1000
-          }}
-          className="h-1.5 w-full cursor-pointer accent-[var(--accent)]"
-        />
-        <span className="mt-1 block text-meta tabular-nums opacity-80">
+        {/* The bars are the picture; an invisible range input on top does the seeking,
+            so it works with a mouse, touch and the keyboard. */}
+        <div className="relative h-7">
+          <div aria-hidden className="flex h-full items-center gap-[2px]">
+            {bars.map((height, i) => (
+              <span
+                key={i}
+                className={cn(
+                  'w-[3px] flex-1 rounded-full transition-colors duration-100',
+                  (i + 0.5) / bars.length <= progress
+                    ? 'bg-accent'
+                    : out ? 'bg-bubble-out-meta/45' : 'bg-ink-subtle/40',
+                )}
+                style={{ height: `${Math.max(14, height)}%` }}
+              />
+            ))}
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={Math.max(1, durationMs)}
+            step={100}
+            value={Math.min(position, durationMs)}
+            aria-label={t.rich.voice}
+            aria-valuetext={formatDuration(position, locale)}
+            onChange={(e) => {
+              const ms = Number(e.target.value)
+              setPosition(ms)
+              if (audioRef.current) audioRef.current.currentTime = ms / 1000
+            }}
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          />
+        </div>
+        <span className="mt-0.5 block text-meta tabular-nums opacity-80">
           {formatDuration(isPlaying || position > 0 ? position : durationMs, locale)}
         </span>
       </div>

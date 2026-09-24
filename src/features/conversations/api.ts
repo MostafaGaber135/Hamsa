@@ -21,6 +21,7 @@ interface AttachmentJson {
   size?: number
   mime?: string
   duration_ms?: number
+  waveform?: number[]
   lat?: number
   lng?: number
 }
@@ -39,14 +40,19 @@ export interface MessageRowLike {
 export function toAttachment(json: unknown): Attachment | undefined {
   if (!json || typeof json !== 'object') return undefined
   const a = json as AttachmentJson
-  return { path: a.path, name: a.name, size: a.size, mime: a.mime, durationMs: a.duration_ms, lat: a.lat, lng: a.lng }
+  return {
+    path: a.path, name: a.name, size: a.size, mime: a.mime, durationMs: a.duration_ms,
+    waveform: Array.isArray(a.waveform) ? a.waveform.slice(0, 64).map(Number) : undefined,
+    lat: a.lat, lng: a.lng,
+  }
 }
 
-export function fromAttachment(a: Attachment): Record<string, string | number> {
-  const json: Record<string, string | number | undefined> = {
-    path: a.path, name: a.name, size: a.size, mime: a.mime, duration_ms: a.durationMs, lat: a.lat, lng: a.lng,
+export function fromAttachment(a: Attachment): Record<string, string | number | number[]> {
+  const json: Record<string, string | number | number[] | undefined> = {
+    path: a.path, name: a.name, size: a.size, mime: a.mime, duration_ms: a.durationMs,
+    waveform: a.waveform, lat: a.lat, lng: a.lng,
   }
-  return Object.fromEntries(Object.entries(json).filter(([, v]) => v !== undefined)) as Record<string, string | number>
+  return Object.fromEntries(Object.entries(json).filter(([, v]) => v !== undefined)) as Record<string, string | number | number[]>
 }
 
 export function toMessage(row: MessageRowLike, conversationId?: string): Message {

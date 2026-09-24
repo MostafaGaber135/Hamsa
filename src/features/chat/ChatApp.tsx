@@ -22,6 +22,7 @@ import { useTyping } from '@/features/realtime/useTyping'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
 import { withStatus } from '@/lib/status'
+import { detachPush, resyncPush } from '@/lib/push'
 import { supabase } from '@/lib/supabase'
 import type { Theme } from '@/lib/theme'
 import type { CachedMessage, Conversation, ConversationAction, Message, User } from '@/types/chat'
@@ -39,7 +40,10 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
   const conversationsQuery = useConversations()
   const profileQuery = useProfile(userId)
   const markRead = useMarkRead()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(
+    // Opened from a notification in a new tab: ?c=<conversation id>
+    () => new URLSearchParams(window.location.search).get('c'),
+  )
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [newChatOpen, setNewChatOpen] = useState(false)
@@ -148,6 +152,25 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
     if (selectedId && selectedUnread && reading) markReadMutate(selectedId)
   }, [selectedId, selectedUnread, reading, markReadMutate])
 
+  // Notifications: this device notifies whoever is signed in now.
+  useEffect(() => {
+    resyncPush()
+  }, [])
+
+  // Clicking a notification opens its chat: via ?c=<id> for a new tab, or a message
+  // from the service worker for a tab that was already open.
+  useEffect(() => {
+    if (window.location.search.includes('c=')) window.history.replaceState(null, '', window.location.pathname)
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'open-conversation' && e.data.conversationId) {
+        setSelectedId(e.data.conversationId)
+        setView('chat')
+      }
+    }
+    navigator.serviceWorker?.addEventListener('message', onMessage)
+    return () => navigator.serviceWorker?.removeEventListener('message', onMessage)
+  }, [])
+
   // "(3) Hamsa" in the browser tab when chats are waiting.
   useEffect(() => {
     document.title = unreadTotal > 0 ? `(${unreadTotal}) Hamsa` : 'Hamsa'
@@ -181,7 +204,10 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
         onConversationAction={handleConversationAction}
         onToggleTheme={onToggleTheme}
         onNewChat={() => setNewChatOpen(true)}
-        onSignOut={() => supabase.auth.signOut()}
+        onSignOut={async () => {
+          await detachPush().catch(() => undefined)
+          await supabase.auth.signOut()
+        }}
         onOpenFriends={() => setView((v) => (v === 'friends' ? 'chat' : 'friends'))}
         friendsActive={view === 'friends'}
         onOpenProfile={() => setView((v) => (v === 'profile' ? 'chat' : 'profile'))}

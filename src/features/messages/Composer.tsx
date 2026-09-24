@@ -6,6 +6,7 @@ import { IconButton, focusRing } from '@/components/ui/Button'
 import { Menu, type MenuAnchor } from '@/components/ui/Menu'
 import { Spinner } from '@/components/ui/Spinner'
 import { formatBytes, formatDuration, textDirection } from '@/lib/bidi'
+import { locate, type LocationProblem } from '@/lib/geolocation'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
 import type { Attachment, MessageKind } from '@/types/chat'
@@ -53,7 +54,7 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
   const docRef = useRef<HTMLInputElement>(null)
 
   const recorder = useVoiceRecorder((recording) =>
-    onSend({ kind: 'voice', file: recording.file, attachment: { durationMs: recording.durationMs } }),
+    onSend({ kind: 'voice', file: recording.file, attachment: { durationMs: recording.durationMs, waveform: recording.waveform } }),
   )
   const canSend = text.trim().length > 0 || pending !== null
   const shownError =
@@ -101,26 +102,29 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
     fieldRef.current?.focus()
   }
 
-  function shareLocation() {
-    if (!navigator.geolocation) return setError(t.rich.locationUnsupported)
+  async function shareLocation() {
     setLocating(true)
     setError(null)
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocating(false)
-        onSend({ kind: 'location', attachment: { lat: position.coords.latitude, lng: position.coords.longitude } })
-      },
-      () => {
-        setLocating(false)
-        setError(t.rich.locationBlocked)
-      },
-      { enableHighAccuracy: true, timeout: 15_000 },
-    )
+    try {
+      const { lat, lng } = await locate()
+      onSend({ kind: 'location', attachment: { lat, lng } })
+    } catch (problem) {
+      const messages: Record<LocationProblem, string> = {
+        unsupported: t.rich.locationUnsupported,
+        denied: t.geo.denied,
+        deviceOff: t.geo.deviceOff,
+        unavailable: t.geo.unavailable,
+        timeout: t.geo.timeout,
+      }
+      setError(messages[problem as LocationProblem] ?? t.geo.unavailable)
+    } finally {
+      setLocating(false)
+    }
   }
 
   async function sendRecording() {
     const result = await recorder.stop()
-    if (result) onSend({ kind: 'voice', file: result.file, attachment: { durationMs: result.durationMs } })
+    if (result) onSend({ kind: 'voice', file: result.file, attachment: { durationMs: result.durationMs, waveform: result.waveform } })
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -231,10 +235,20 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
             <IconButton label={t.rich.cancelRecording} onClick={recorder.cancel}>
               <Trash2 size={20} strokeWidth={1.75} className="text-danger" />
             </IconButton>
-            <span className="flex flex-1 items-center gap-2 px-2 text-body text-ink">
-              <span aria-hidden className="size-2.5 animate-pulse rounded-full bg-danger" />
-              {t.rich.recording}
-              <span className="tabular-nums text-ink-muted">{formatDuration(recorder.elapsedMs, locale)}</span>
+            <span className="flex min-w-0 flex-1 items-center gap-3 px-2 text-body text-ink">
+              <span aria-hidden className="size-2.5 shrink-0 animate-pulse rounded-full bg-danger" />
+              <span className="sr-only">{t.rich.recording}</span>
+              <span className="shrink-0 tabular-nums text-ink-muted">{formatDuration(recorder.elapsedMs, locale)}</span>
+              {/* Live loudness: newest bar on the right, like a scrolling tape. */}
+              <span dir="ltr" aria-hidden className="flex h-8 min-w-0 flex-1 items-center justify-end gap-[3px] overflow-hidden">
+                {recorder.levels.map((level, i) => (
+                  <span
+                    key={i}
+                    className="w-[3px] shrink-0 rounded-full bg-accent transition-[height] duration-75"
+                    style={{ height: `${Math.max(12, level * 100)}%` }}
+                  />
+                ))}
+              </span>
             </span>
             <button
               type="button"

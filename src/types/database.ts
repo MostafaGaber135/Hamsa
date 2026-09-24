@@ -291,6 +291,14 @@ export type Database = {
         Args: { conv_id: string }
         Returns: undefined
       }
+      save_push_subscription: {
+        Args: { sub_endpoint: string; sub_p256dh: string; sub_auth: string; sub_user_agent: string }
+        Returns: undefined
+      }
+      delete_push_subscription: {
+        Args: { sub_endpoint: string }
+        Returns: undefined
+      }
       touch_last_seen: {
         Args: never
         Returns: undefined

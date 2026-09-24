@@ -1,10 +1,11 @@
-import { ArrowLeft, Camera, Check, CircleAlert, Trash2 } from 'lucide-react'
+import { ArrowLeft, Bell, BellOff, Camera, Check, CircleAlert, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { TextField } from '@/components/ui/TextField'
 import { useLocale } from '@/lib/i18n'
+import { disablePush, enablePush, getPushStatus, type PushStatus } from '@/lib/push'
 import { useDebounced } from '@/lib/useDebounced'
 import type { User } from '@/types/chat'
 import { USERNAME_PATTERN, UsernameTakenError, validateImage } from './api'
@@ -43,6 +44,7 @@ export function ProfilePage({ user, email, hasPassword, onBack }: ProfilePagePro
             saved={detailsSaved}
             onSaved={flashDetailsSaved}
           />
+          <NotificationsCard />
           <PasswordCard hasPassword={hasPassword} />
         </div>
       </div>
@@ -256,6 +258,71 @@ function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
           </Button>
         </div>
       </form>
+    </Card>
+  )
+}
+
+function NotificationsCard() {
+  const { t } = useLocale()
+  const [status, setStatus] = useState<PushStatus | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    getPushStatus().then(setStatus)
+  }, [])
+
+  async function toggle() {
+    setBusy(true)
+    setError(null)
+    try {
+      if (status === 'on') {
+        await disablePush()
+        setStatus('off')
+      } else {
+        setStatus(await enablePush())
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const note: Partial<Record<PushStatus, string>> = {
+    on: t.push.on,
+    blocked: t.push.blocked,
+    unsupported: t.push.unsupported,
+    'needs-install': t.push.needsInstall,
+    'not-configured': t.push.notConfigured,
+  }
+  const canToggle = status === 'on' || status === 'off'
+
+  return (
+    <Card title={t.push.title} description={t.push.description}>
+      {status === null ? (
+        <Spinner />
+      ) : (
+        <div className="flex flex-col gap-3">
+          {note[status] && (
+            <p className={status === 'on' ? 'text-body text-presence' : 'text-body text-ink-muted'}>{note[status]}</p>
+          )}
+          {canToggle && (
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                variant={status === 'on' ? 'secondary' : 'primary'}
+                disabled={busy}
+                onClick={toggle}
+                icon={status === 'on' ? <BellOff size={16} strokeWidth={1.75} aria-hidden /> : <Bell size={16} strokeWidth={1.75} aria-hidden />}
+              >
+                {status === 'on' ? t.push.disable : t.push.enable}
+              </Button>
+              <span className="text-caption text-ink-subtle">{t.push.muted}</span>
+            </div>
+          )}
+          {error && <ErrorNote>{error}</ErrorNote>}
+        </div>
+      )}
     </Card>
   )
 }

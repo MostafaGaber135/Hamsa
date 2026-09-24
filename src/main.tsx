@@ -3,8 +3,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import { LocaleProvider } from './lib/i18n.tsx'
+import { registerServiceWorker } from './lib/push.ts'
 import { queryClient } from './lib/queryClient.ts'
 import './styles/index.css'
+
+registerServiceWorker()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
