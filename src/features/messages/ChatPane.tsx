@@ -1,11 +1,14 @@
-import { ArrowLeft, WifiOff } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { ArrowLeft, PanelRight, WifiOff } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { IconButton } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
+import { wallpaperStyle } from '@/lib/wallpapers'
 import { useLocale } from '@/lib/i18n'
 import type { Conversation, Message, User } from '@/types/chat'
-import { Composer } from './Composer'
+import { Composer, type Draft } from './Composer'
+import { isViewable } from './media'
+import { MediaViewer } from './MediaViewer'
 import { MessageThread } from './MessageThread'
 import { TypingInline } from './TypingIndicator'
 
@@ -17,7 +20,10 @@ interface ChatPaneProps {
   users: Record<string, User>
   currentUserId: string
   onBack: () => void
-  onSend: (text: string, image?: File) => void
+  onSend: (draft: Draft) => void
+  /** Opens or closes the chat info panel. */
+  onToggleDetails: () => void
+  detailsOpen: boolean
   onTyping?: () => void
   /** Shows the "Reconnecting…" banner under the header. */
   connection?: 'connecting' | 'live' | 'lost'
@@ -31,9 +37,11 @@ interface ChatPaneProps {
 
 export function ChatPane({
   conversation, title, peer, messages, users, currentUserId, onBack, onSend, onRetry,
-  hasOlder, loadingOlder, onLoadOlder, threadPlaceholder, onTyping, connection,
+  hasOlder, loadingOlder, onLoadOlder, threadPlaceholder, onTyping, connection, onToggleDetails, detailsOpen,
 }: ChatPaneProps) {
   const { t, fmt, lang } = useLocale()
+  const [viewing, setViewing] = useState<string | null>(null)
+  const viewable = messages.filter(isViewable)
   const align = lang === 'ar' ? 'text-right' : 'text-left'
   const typingUsers = (conversation.typingUserIds ?? []).map((id) => users[id]).filter(Boolean)
 
@@ -52,17 +60,28 @@ export function ChatPane({
         <IconButton label={t.back} onClick={onBack} className="md:hidden">
           <ArrowLeft size={20} strokeWidth={1.75} className="rtl:-scale-x-100" />
         </IconButton>
-        <Avatar
-          id={peer?.id ?? conversation.id}
-          name={title}
-        src={conversation.isGroup ? undefined : peer?.avatarUrl}
-          group={conversation.isGroup}
-          online={!conversation.isGroup && peer?.online}
-        />
-        <div className="min-w-0">
-          <h2 dir="auto" className={cn('truncate text-name text-ink', align)}>{title}</h2>
-          <p className="truncate text-caption text-ink-muted">{subtitle}</p>
-        </div>
+        {/* The name opens the chat info panel, like tapping a contact's name. */}
+        <button
+          type="button"
+          onClick={onToggleDetails}
+          aria-label={`${title} · ${t.details.open}`}
+          className="-my-1 flex min-w-0 flex-1 items-center gap-3 rounded-2xl py-1 pe-2 text-start hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-focus-ring md:-ms-2 md:ps-2"
+        >
+          <Avatar
+            id={peer?.id ?? conversation.id}
+            name={title}
+            src={conversation.isGroup ? conversation.avatarUrl : peer?.avatarUrl}
+            group={conversation.isGroup}
+            online={!conversation.isGroup && peer?.online}
+          />
+          <span className="min-w-0">
+            <span dir="auto" className={cn('block truncate text-name text-ink', align)}>{title}</span>
+            <span className={cn('block truncate text-caption text-ink-muted', align)}>{subtitle}</span>
+          </span>
+        </button>
+        <IconButton label={t.details.open} active={detailsOpen} onClick={onToggleDetails}>
+          <PanelRight size={20} strokeWidth={1.75} className="rtl:-scale-x-100" />
+        </IconButton>
       </header>
 
       {connection === 'lost' && (
@@ -75,8 +94,11 @@ export function ChatPane({
         </div>
       )}
 
+      {/* Your chosen background sits behind the messages and the composer. */}
+      <div className="flex min-h-0 flex-1 flex-col" style={wallpaperStyle(conversation.wallpaper)}>
       {threadPlaceholder ?? (
       <MessageThread
+        onOpen={(m) => setViewing(m.id)}
         hasOlder={hasOlder}
         loadingOlder={loadingOlder}
         onLoadOlder={onLoadOlder}
@@ -98,6 +120,11 @@ export function ChatPane({
           onTyping={onTyping}
         />
       </div>
+      </div>
+
+      {viewing && (
+        <MediaViewer items={viewable} startId={viewing} users={users} onClose={() => setViewing(null)} />
+      )}
     </>
   )
 }

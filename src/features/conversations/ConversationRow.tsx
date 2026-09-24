@@ -7,6 +7,7 @@ import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
 import type { Conversation, ConversationAction, Message, User } from '@/types/chat'
 import { MessageStatusIcon } from '../messages/MessageStatusIcon'
+import { messagePreview } from './preview'
 import { TypingInline } from '../messages/TypingIndicator'
 
 interface ConversationRowProps {
@@ -37,7 +38,7 @@ export function ConversationRow({
   const unread = conversation.unreadCount > 0 || Boolean(conversation.markedUnread)
   const typing = (conversation.typingUserIds?.length ?? 0) > 0
   const own = lastMessage?.senderId === currentUserId
-  const previewText = lastMessage?.content ?? (lastMessage?.imagePath || lastMessage?.imageUrl ? t.photo : '')
+  const previewText = messagePreview(lastMessage, t)
   const prefix = conversation.isGroup && lastMessage && !own && lastSender ? `${lastSender.name.split(' ')[0]}: ` : ''
 
   const items: MenuItem[] = [
@@ -111,7 +112,7 @@ export function ConversationRow({
         <Avatar
           id={peer?.id ?? conversation.id}
           name={title}
-          src={conversation.isGroup ? undefined : peer?.avatarUrl}
+          src={conversation.isGroup ? conversation.avatarUrl : peer?.avatarUrl}
           size="lg"
           group={conversation.isGroup}
           online={!conversation.isGroup && peer?.online}
@@ -200,3 +201,4 @@ export function ConversationRow({
     </>
   )
 }
+

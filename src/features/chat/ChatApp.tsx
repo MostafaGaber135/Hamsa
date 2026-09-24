@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import type { ConversationItem } from '@/features/conversations/ConversationList'
 import { openDirectConversation } from '@/features/conversations/api'
+import { ConversationDetails } from '@/features/conversations/ConversationDetails'
 import { EmptyState } from '@/features/conversations/EmptyState'
 import { NewChatDialog } from '@/features/conversations/NewChatDialog'
 import { conversationKeys, useConversationAction, useConversations, useMarkRead, useProfile } from '@/features/conversations/queries'
@@ -12,6 +13,8 @@ import { ProfilePage } from '@/features/profile/ProfilePage'
 import { useFriendships } from '@/features/friends/queries'
 import { Sidebar, type Filter } from '@/features/conversations/Sidebar'
 import { ChatPane } from '@/features/messages/ChatPane'
+import type { Draft } from '@/features/messages/Composer'
+import { MediaViewer } from '@/features/messages/MediaViewer'
 import { useMessages, useSendMessage } from '@/features/messages/queries'
 import { useLiveUpdates, type Connection } from '@/features/realtime/useLiveUpdates'
 import { usePresence } from '@/features/realtime/usePresence'
@@ -41,6 +44,8 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
   const [filter, setFilter] = useState<Filter>('all')
   const [newChatOpen, setNewChatOpen] = useState(false)
   const [view, setView] = useState<'chat' | 'friends' | 'profile'>('chat')
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [viewer, setViewer] = useState<{ items: Message[]; startId: string } | null>(null)
   const friendships = useFriendships()
   const friendRequests = (friendships.data ?? []).filter((f) => f.status === 'incoming').length
   const qc = useQueryClient()
@@ -67,6 +72,7 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
   }
 
   function openConversation(id: string) {
+    if (id !== selectedId) setDetailsOpen(false)
     setSelectedId(id)
     setView('chat')
   }
@@ -218,12 +224,32 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
             connection={connection}
             onTyping={() => typing.sendTyping(selected.id)}
             onSent={() => typing.stopTyping(selected.id)}
+            detailsOpen={detailsOpen}
+            onToggleDetails={() => setDetailsOpen((open) => !open)}
             onBack={() => setSelectedId(null)}
           />
         ) : (
           <EmptyState onNewChat={() => setNewChatOpen(true)} />
         )}
       </main>
+
+      {/* Chat info: a third column on wide screens, full screen on smaller ones. */}
+      {view === 'chat' && selected && detailsOpen && (
+        <ConversationDetails
+          key={selected.id}
+          conversation={selected}
+          title={selected.name ?? selected.members.find((m) => m.id !== me.id)?.name ?? ''}
+          me={me}
+          onClose={() => setDetailsOpen(false)}
+          onOpenMedia={(items, startId) => setViewer({ items, startId })}
+          onAction={(action) => {
+            setDetailsOpen(false)
+            handleConversationAction(selected.id, action)
+          }}
+          className="fixed inset-0 z-30 lg:static lg:inset-auto lg:z-auto lg:w-88 lg:shrink-0 lg:rounded-3xl lg:shadow-xs"
+        />
+      )}
+      {viewer && <MediaViewer items={viewer.items} startId={viewer.startId} users={users} onClose={() => setViewer(null)} />}
 
       <NewChatDialog
         open={newChatOpen}
@@ -246,10 +272,14 @@ interface OpenConversationProps {
   onTyping: () => void
   onSent: () => void
   onBack: () => void
+  detailsOpen: boolean
+  onToggleDetails: () => void
 }
 
 /** Its own component so each open conversation gets its own message query and send mutation. */
-function OpenConversation({ conversation, me, users, connection, onTyping, onSent, onBack }: OpenConversationProps) {
+function OpenConversation({
+  conversation, me, users, connection, onTyping, onSent, onBack, detailsOpen, onToggleDetails,
+}: OpenConversationProps) {
   const { t } = useLocale()
   const messagesQuery = useMessages(conversation.id, conversation.clearedAt)
   const send = useSendMessage(conversation.id)
@@ -260,16 +290,22 @@ function OpenConversation({ conversation, me, users, connection, onTyping, onSen
     [messagesQuery.data, me.id, conversation.members],
   )
 
-  function sendMessage(text: string, image?: File) {
+  function sendMessage(draft: Draft) {
     onSent()
+    const local = draft.file ? URL.createObjectURL(draft.file) : undefined
     send.mutate({
       id: crypto.randomUUID(), // client-generated: lets us recognise the Realtime echo
       conversationId: conversation.id,
       senderId: me.id,
-      content: text || undefined,
-      imageFile: image,
-      // Shown right away while the real image uploads.
-      imageUrl: image ? URL.createObjectURL(image) : undefined,
+      kind: draft.kind,
+      content: draft.content,
+      file: draft.file,
+      attachment: draft.file
+        ? { ...draft.attachment, name: draft.file.name, size: draft.file.size, mime: draft.file.type }
+        : draft.attachment,
+      // Shown right away while the real file uploads.
+      imageUrl: draft.kind === 'image' ? local : undefined,
+      fileUrl: draft.kind !== 'image' ? local : undefined,
       createdAt: new Date().toISOString(),
     })
   }
@@ -301,6 +337,8 @@ function OpenConversation({ conversation, me, users, connection, onTyping, onSen
       threadPlaceholder={threadPlaceholder}
       onTyping={onTyping}
       connection={connection}
+      detailsOpen={detailsOpen}
+      onToggleDetails={onToggleDetails}
     />
   )
 }

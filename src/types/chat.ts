@@ -17,11 +17,30 @@ export interface Member extends User {
   role: 'member' | 'admin'
 }
 
+export type MessageKind = 'text' | 'image' | 'video' | 'voice' | 'file' | 'location' | 'sticker'
+
+/** Details for voice notes, files, videos and locations. */
+export interface Attachment {
+  /** Where the file lives in the chat-files bucket. */
+  path?: string
+  name?: string
+  size?: number
+  mime?: string
+  durationMs?: number
+  lat?: number
+  lng?: number
+}
+
 export interface Message {
   id: string
   conversationId: string
   senderId: string
+  kind: MessageKind
+  /** Text, a caption, or a sticker id. */
   content?: string
+  attachment?: Attachment
+  /** A URL the browser can open for the attachment (signed, or local while sending). */
+  fileUrl?: string
   /** Where the image lives in the chat-images bucket. */
   imagePath?: string
   /** A URL the browser can show: a signed URL, or a local preview while sending. */
@@ -34,8 +53,8 @@ export interface Message {
 /** A message that exists only in the cache until the server confirms it. */
 export interface CachedMessage extends Message {
   pending?: 'sending' | 'failed'
-  /** The picked image, kept until the upload succeeds so "retry" can upload it again. */
-  imageFile?: File
+  /** The picked file or recording, kept until the upload succeeds so "retry" can upload it again. */
+  file?: File
 }
 
 export interface Conversation {
@@ -56,6 +75,12 @@ export interface Conversation {
   markedUnread?: boolean
   /** You deleted the chat at this moment: older messages are hidden for you. */
   clearedAt?: string
+  /** Group photo. */
+  avatarUrl?: string
+  /** Your chosen background for this chat. */
+  wallpaper?: string
+  /** Your role in this conversation. Admins can edit a group. */
+  myRole: 'member' | 'admin'
 }
 
 export type ConversationAction = 'pin' | 'unpin' | 'mute' | 'unmute' | 'markRead' | 'markUnread' | 'delete' | 'leave'

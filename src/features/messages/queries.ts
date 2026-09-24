@@ -67,7 +67,14 @@ export function useSendMessage(conversationId: string) {
 
   return useMutation({
     mutationFn: (message: CachedMessage) =>
-      insertMessage({ id: message.id, conversationId, content: message.content, imageFile: message.imageFile }),
+      insertMessage({
+        id: message.id,
+        conversationId,
+        kind: message.kind,
+        content: message.content,
+        file: message.file,
+        attachment: message.attachment,
+      }),
 
     // Runs before the request: the message shows up instantly as "sending".
     onMutate: async (message) => {
@@ -78,7 +85,7 @@ export function useSendMessage(conversationId: string) {
     },
 
     onSuccess: (_data, message) =>
-      patchMessage(qc, conversationId, message.id, { pending: undefined, imageFile: undefined }),
+      patchMessage(qc, conversationId, message.id, { pending: undefined, file: undefined }),
 
     // Failed messages stay where they are, marked failed, with a retry button.
     onError: (_error, message) => patchMessage(qc, conversationId, message.id, { pending: 'failed' }),

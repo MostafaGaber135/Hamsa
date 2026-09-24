@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Conversation, ConversationAction } from '@/types/chat'
-import { fetchConversations, fetchProfile, markConversationRead, runConversationAction, searchProfiles } from './api'
+import {
+  addGroupMembers, fetchConversations, fetchProfile, markConversationRead, removeGroupMember, runConversationAction,
+  searchProfiles, setMemberRole, setWallpaper, updateGroup, uploadGroupPhoto,
+} from './api'
 
 export const conversationKeys = {
   all: ['conversations'] as const,
@@ -79,4 +82,39 @@ export function useConversationAction() {
     },
     onSettled: () => qc.invalidateQueries({ queryKey: conversationKeys.all }),
   })
+}
+
+/** Your background for one chat, applied instantly. */
+export function useSetWallpaper() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, wallpaper }: { id: string; wallpaper: string }) => setWallpaper(id, wallpaper),
+    onMutate: ({ id, wallpaper }) => {
+      qc.setQueryData<Conversation[]>(conversationKeys.all, (list) =>
+        list?.map((c) => (c.id === id ? { ...c, wallpaper: wallpaper === 'default' ? undefined : wallpaper } : c)),
+      )
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: conversationKeys.all }),
+  })
+}
+
+/** Group settings for admins: name and photo, members and roles. */
+export function useGroupAdmin(conversationId: string) {
+  const qc = useQueryClient()
+  const refresh = () => qc.invalidateQueries({ queryKey: conversationKeys.all })
+
+  const update = useMutation({
+    mutationFn: async ({ name, photo, avatarUrl }: { name: string; photo?: File; avatarUrl: string | null }) => {
+      const url = photo ? await uploadGroupPhoto(conversationId, photo) : avatarUrl
+      await updateGroup(conversationId, name, url)
+    },
+    onSettled: refresh,
+  })
+  const add = useMutation({ mutationFn: (ids: string[]) => addGroupMembers(conversationId, ids), onSettled: refresh })
+  const remove = useMutation({ mutationFn: (id: string) => removeGroupMember(conversationId, id), onSettled: refresh })
+  const role = useMutation({
+    mutationFn: ({ id, role }: { id: string; role: 'member' | 'admin' }) => setMemberRole(conversationId, id, role),
+    onSettled: refresh,
+  })
+  return { update, add, remove, role }
 }

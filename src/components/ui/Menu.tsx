@@ -60,8 +60,10 @@ export function Menu({ anchor, items, label, onClose, onEscape }: MenuProps) {
 
   // Keep the latest onClose without re-running the listeners below on every render.
   const onCloseRef = useRef(onClose)
+  const anchorRef = useRef(anchor)
   useEffect(() => {
     onCloseRef.current = onClose
+    anchorRef.current = anchor
   })
 
   // Focus the first item once the menu is placed (hidden elements can't take focus).
@@ -73,7 +75,11 @@ export function Menu({ anchor, items, label, onClose, onEscape }: MenuProps) {
   useEffect(() => {
     const close = () => onCloseRef.current()
     function onPointerDown(e: PointerEvent) {
-      if (!menuRef.current?.contains(e.target as Node)) close()
+      const target = e.target as Node
+      const a = anchorRef.current
+      // Pressing the button that opened the menu lets that button toggle it closed.
+      const onAnchor = 'element' in a && a.element.contains(target)
+      if (!menuRef.current?.contains(target) && !onAnchor) close()
     }
     // The menu is placed once; if the page moves under it, just close it.
     window.addEventListener('pointerdown', onPointerDown, true)
@@ -102,6 +108,8 @@ export function Menu({ anchor, items, label, onClose, onEscape }: MenuProps) {
         onClose()
         return
       default:
+        // Enter/Space activate the focused item; keep them from reaching the list below.
+        e.stopPropagation()
         return
     }
     e.preventDefault()
@@ -115,6 +123,15 @@ export function Menu({ anchor, items, label, onClose, onEscape }: MenuProps) {
       aria-label={label}
       dir={dir}
       onKeyDown={handleKeyDown}
+      // React passes events from a portal up to the component that opened it.
+      // Without this, clicking "Mark as unread" also clicks the conversation row
+      // underneath, which opens the chat and marks it read again.
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
       style={{ top: position?.top ?? 0, left: position?.left ?? 0, visibility: position ? 'visible' : 'hidden' }}
       className="fixed z-50 min-w-52 animate-rise rounded-2xl bg-surface-raised p-1.5 shadow-lg ring-1 ring-line"
     >

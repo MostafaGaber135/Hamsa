@@ -1,23 +1,16 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { toMessage } from '@/features/conversations/api'
+import { toMessage, type MessageRowLike } from '@/features/conversations/api'
 import { conversationKeys } from '@/features/conversations/queries'
 import { friendKeys } from '@/features/friends/queries'
-import { withImageUrls } from '@/features/messages/api'
+import { withMediaUrls } from '@/features/messages/api'
 import { bumpConversation, upsertMessage } from '@/features/messages/queries'
 import { supabase } from '@/lib/supabase'
 import type { Conversation } from '@/types/chat'
 
 export type Connection = 'connecting' | 'live' | 'lost'
 
-interface MessageRow {
-  id: string
-  conversation_id: string
-  sender_id: string
-  content: string | null
-  image_path: string | null
-  created_at: string
-}
+type MessageRow = MessageRowLike
 
 interface ParticipantRow {
   conversation_id: string
@@ -56,7 +49,7 @@ export function useLiveUpdates({ userId, openConversationId, onReadWhileOpen }: 
     let disposed = false
 
     async function onMessage(row: MessageRow) {
-      const [message] = await withImageUrls([toMessage(row)]).catch(() => [toMessage(row)])
+      const [message] = await withMediaUrls([toMessage(row)]).catch(() => [toMessage(row)])
       const conversationId = message.conversationId
       const list = qc.getQueryData<Conversation[]>(conversationKeys.all)
 
@@ -66,7 +59,7 @@ export function useLiveUpdates({ userId, openConversationId, onReadWhileOpen }: 
       }
 
       // Your own message may already be there (optimistic): this confirms it.
-      upsertMessage(qc, conversationId, { ...message, pending: undefined, imageFile: undefined })
+      upsertMessage(qc, conversationId, { ...message, pending: undefined, file: undefined })
       bumpConversation(qc, message)
 
       if (message.senderId === userId) return
@@ -105,6 +98,8 @@ export function useLiveUpdates({ userId, openConversationId, onReadWhileOpen }: 
       // Added to a group, someone left, a new 1:1 conversation with you.
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'conversation_participants' }, refreshConversations)
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'conversation_participants' }, refreshConversations)
+      // A group was renamed or got a new photo.
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'conversations' }, refreshConversations)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () =>
         qc.invalidateQueries({ queryKey: friendKeys.all }),
       )

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Conversation, ConversationAction, Member, Message, User } from '@/types/chat'
+import type { Attachment, Conversation, ConversationAction, Member, Message, MessageKind, User } from '@/types/chat'
 
 // ---------- mapping database rows → UI shapes ----------
 
@@ -13,28 +13,51 @@ interface MemberJson {
   role: 'member' | 'admin'
 }
 
-interface LastMessageJson {
-  id: string
-  sender_id: string
-  content: string | null
-  image_path: string | null
-  created_at: string
+type LastMessageJson = MessageRowLike
+
+interface AttachmentJson {
+  path?: string
+  name?: string
+  size?: number
+  mime?: string
+  duration_ms?: number
+  lat?: number
+  lng?: number
 }
 
-export function toMessage(row: {
+export interface MessageRowLike {
   id: string
   conversation_id?: string
   sender_id: string
   content: string | null
   image_path: string | null
   created_at: string
-}, conversationId?: string): Message {
+  kind?: string | null
+  attachment?: unknown
+}
+
+export function toAttachment(json: unknown): Attachment | undefined {
+  if (!json || typeof json !== 'object') return undefined
+  const a = json as AttachmentJson
+  return { path: a.path, name: a.name, size: a.size, mime: a.mime, durationMs: a.duration_ms, lat: a.lat, lng: a.lng }
+}
+
+export function fromAttachment(a: Attachment): Record<string, string | number> {
+  const json: Record<string, string | number | undefined> = {
+    path: a.path, name: a.name, size: a.size, mime: a.mime, duration_ms: a.durationMs, lat: a.lat, lng: a.lng,
+  }
+  return Object.fromEntries(Object.entries(json).filter(([, v]) => v !== undefined)) as Record<string, string | number>
+}
+
+export function toMessage(row: MessageRowLike, conversationId?: string): Message {
   return {
     id: row.id,
     conversationId: row.conversation_id ?? conversationId ?? '',
     senderId: row.sender_id,
+    kind: ((row.kind ?? (row.image_path ? 'image' : 'text')) as MessageKind),
     content: row.content ?? undefined,
     imagePath: row.image_path ?? undefined,
+    attachment: toAttachment(row.attachment),
     createdAt: row.created_at,
   }
 }
@@ -71,6 +94,9 @@ export async function fetchConversations(): Promise<Conversation[]> {
       pinned: row.pinned_at !== null,
       markedUnread: row.marked_unread,
       clearedAt: row.cleared_at ?? undefined,
+      avatarUrl: row.avatar_url ?? undefined,
+      wallpaper: row.wallpaper ?? undefined,
+      myRole: row.my_role === 'admin' ? 'admin' : 'member',
     }
   })
 }
@@ -144,5 +170,41 @@ export async function runConversationAction(conversationId: string, action: Conv
       case 'leave': return supabase.rpc('leave_conversation', { conv_id })
     }
   })()
+  if (error) throw error
+}
+
+// ---------- groups and per-chat settings ----------
+
+export async function setWallpaper(conversationId: string, wallpaper: string) {
+  const { error } = await supabase.rpc('set_conversation_wallpaper', { conv_id: conversationId, new_wallpaper: wallpaper })
+  if (error) throw error
+}
+
+export async function updateGroup(conversationId: string, name: string, avatarUrl: string | null) {
+  const { error } = await supabase.rpc('update_group', { conv_id: conversationId, new_name: name, new_avatar_url: avatarUrl })
+  if (error) throw error
+}
+
+export async function uploadGroupPhoto(conversationId: string, file: File): Promise<string> {
+  const { resizeImage, extensionFor } = await import('@/lib/image')
+  const blob = await resizeImage(file, { maxSide: 256, square: true })
+  const path = `groups/${conversationId}/${Date.now()}.${extensionFor(blob)}`
+  const { error } = await supabase.storage.from('avatars').upload(path, blob, { contentType: blob.type, cacheControl: '31536000' })
+  if (error) throw error
+  return supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl
+}
+
+export async function addGroupMembers(conversationId: string, memberIds: string[]) {
+  const { error } = await supabase.rpc('add_group_members', { conv_id: conversationId, member_ids: memberIds })
+  if (error) throw error
+}
+
+export async function removeGroupMember(conversationId: string, memberId: string) {
+  const { error } = await supabase.rpc('remove_group_member', { conv_id: conversationId, member_id: memberId })
+  if (error) throw error
+}
+
+export async function setMemberRole(conversationId: string, memberId: string, role: 'member' | 'admin') {
+  const { error } = await supabase.rpc('set_member_role', { conv_id: conversationId, member_id: memberId, new_role: role })
   if (error) throw error
 }

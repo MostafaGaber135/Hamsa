@@ -167,6 +167,8 @@ export type Database = {
           content: string | null
           image_path: string | null
           created_at: string
+          kind: string
+          attachment: Json | null
         }
         Insert: {
           id?: string
@@ -175,6 +177,8 @@ export type Database = {
           content?: string | null
           image_path?: string | null
           created_at?: string
+          kind?: string
+          attachment?: Json | null
         }
         Update: {
           id?: string
@@ -183,6 +187,8 @@ export type Database = {
           content?: string | null
           image_path?: string | null
           created_at?: string
+          kind?: string
+          attachment?: Json | null
         }
         Relationships: [
           {
@@ -224,6 +230,9 @@ export type Database = {
           pinned_at: string | null
           marked_unread: boolean
           cleared_at: string | null
+          avatar_url: string | null
+          wallpaper: string | null
+          my_role: string
         }[]
       }
       get_my_friendships: {
@@ -249,6 +258,26 @@ export type Database = {
       is_member_of_path: {
         Args: { object_name: string }
         Returns: boolean
+      }
+      add_group_members: {
+        Args: { conv_id: string; member_ids: string[] }
+        Returns: undefined
+      }
+      remove_group_member: {
+        Args: { conv_id: string; member_id: string }
+        Returns: undefined
+      }
+      set_conversation_wallpaper: {
+        Args: { conv_id: string; new_wallpaper: string }
+        Returns: undefined
+      }
+      set_member_role: {
+        Args: { conv_id: string; member_id: string; new_role: string }
+        Returns: undefined
+      }
+      update_group: {
+        Args: { conv_id: string; new_name: string; new_avatar_url: string | null }
+        Returns: undefined
       }
       clear_conversation: {
         Args: { conv_id: string }

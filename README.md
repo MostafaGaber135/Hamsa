@@ -6,10 +6,13 @@
 
 **A real-time chat app that feels like a quiet room.**
 
-Live messaging, typing indicators, online presence, read receipts, friends and image sharing —
+🔗 **[hamsa-seven.vercel.app](https://hamsa-seven.vercel.app)**
+
+Live messaging, voice notes, files, photos and video, stickers, typing indicators, online presence,
+read receipts, friends and groups —
 fully bilingual (English / Arabic with real RTL), in light and dark themes.
 
-[**Live demo**](https://your-app.vercel.app) · [Design system](https://claude.ai/artifact/6tYWvRDFXbqZE5QsoW8Sfz) · [Report a bug](https://github.com/MostafaGaber135/Hamsa/issues)
+[**Live demo**](https://hamsa-seven.vercel.app)
 
 ![React](https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
@@ -37,8 +40,11 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 - Real-time messages, no refresh — sent optimistically, then confirmed by the server
 - Delivery states you can read at a glance: sending, sent, read, failed with one-click retry
 - Read receipts and unread counts that update live
-- Image messages: attach, paste a screenshot, preview before sending
-- Emoji picker, per-conversation drafts, and an unread count in the browser tab
+- Photos and videos, documents (PDFs open in the browser), voice notes and your live location —
+  with a preview before sending, drag-and-drop and paste
+- A full-screen viewer for photos, videos and PDFs, with next / previous and download
+- Hamsa's own sticker pack, an emoji picker, per-conversation drafts, and an unread count in the browser tab
+- Chat info panel: shared media, files, voice notes and links, plus a per-chat wallpaper (9 designs, light and dark)
 - Smart scrolling: follows new messages when you're at the bottom, shows a "new messages" button when you're reading history, and loads older messages as you scroll up
 
 **Presence**
@@ -46,7 +52,7 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 - "Sara is typing…" in the chat, the header and the conversation list
 
 **People**
-- One-to-one chats and groups
+- One-to-one chats and groups, with group photo and name, admins, and adding or removing members
 - Friends: search people, send, accept, decline and cancel requests
 - Conversation menu: pin, mute, mark as read / unread, delete chat (for you only), leave group — via the ⋯ button, right-click, or Shift + F10
 
@@ -75,6 +81,7 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 | **Backend** | Supabase: PostgreSQL, Auth, Storage, Realtime |
 | **Realtime** | Postgres Changes (messages, receipts), Presence (online), Broadcast (typing) |
 | **Security** | Row Level Security on every table, private Realtime channels, private storage |
+| **Hosting** | Vercel (frontend), Supabase (backend, EU region) |
 
 ---
 
@@ -119,7 +126,8 @@ All access rules live in the database, not in the frontend, so they hold even if
 - **Column-level privileges.** On your own profile you can edit only your name, username and photo — never your id or timestamps.
 - **The server owns time.** A trigger sets `created_at`, so messages can't be back-dated.
 - **Private Realtime channels.** Typing channels (`typing:<conversation-id>`) are restricted to that conversation's members by policies on `realtime.messages`.
-- **Private image storage.** Chat images are only reachable through short-lived signed URLs, and only members can upload to a conversation's folder.
+- **Private file storage.** Chat images, voice notes and documents are only reachable through short-lived signed URLs, and only members can upload to a conversation's folder.
+- **Admin-only group changes.** Renaming, the group photo and membership changes are checked in the database, not just hidden in the UI.
 
 The security rules are covered by SQL tests in [`supabase/tests`](supabase/tests): outsiders can't read or write a conversation, nobody can impersonate another user, and uploads are limited to members.
 
@@ -138,6 +146,10 @@ The security rules are covered by SQL tests in [`supabase/tests`](supabase/tests
 **Bubble shape vs. content direction.** A bubble's corners follow the interface direction; its text uses `dir="auto"`. An English message in the Arabic interface keeps its own direction and its timestamp on the correct side.
 
 **Images resized before upload.** A multi-megabyte phone photo is scaled in the browser (to 1600 px for messages, 256 px for avatars) before it's sent.
+
+**One message table, many kinds.** Text, photos, video, voice, files, location and stickers share one `messages` table: a `kind` column and a small `attachment` JSON (path, name, size, duration, coordinates). New kinds need no new tables, and Realtime delivers them all the same way.
+
+**Text direction per message and per keystroke.** The composer sets `dir` from the first letter you type instead of using `unicode-bidi: plaintext`, which puts the caret on the wrong side on mobile browsers.
 
 ---
 
@@ -173,6 +185,12 @@ npm run dev
 ```
 
 Open <http://localhost:5173>. To try a conversation, sign up two accounts, one in a normal window and one in a private window.
+
+### Deploy
+
+The app is a static Vite build, deployed on Vercel. Add the same two `VITE_…` variables in
+**Vercel → Project → Settings → Environment Variables**. [`vercel.json`](vercel.json) sends every path
+to `index.html`, so pages like `/privacy` work on refresh.
 
 > For quick local testing, you can turn off **Authentication → Sign In / Providers → Email → Confirm email**.
 
@@ -217,7 +235,6 @@ Each feature keeps its own `api.ts` (Supabase calls), `queries.ts` (TanStack Que
 - [ ] Browser notifications for new messages in background tabs
 - [ ] Unit tests (Vitest) and end-to-end tests (Playwright) in CI
 - [ ] Message reactions and replies
-- [ ] Group management: rename, add and remove members
 
 ---
 

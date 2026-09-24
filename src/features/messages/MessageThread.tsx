@@ -17,6 +17,7 @@ interface MessageThreadProps {
   isGroup: boolean
   typingUsers: User[]
   onRetry: (message: Message) => void
+  onOpen?: (message: Message) => void
   hasOlder?: boolean
   loadingOlder?: boolean
   onLoadOlder?: () => void
@@ -39,7 +40,7 @@ function runPosition(messages: Message[], i: number, sameDay: (a: string, b: str
 }
 
 export function MessageThread({
-  messages, users, currentUserId, isGroup, typingUsers, onRetry, hasOlder, loadingOlder, onLoadOlder,
+  messages, users, currentUserId, isGroup, typingUsers, onRetry, onOpen, hasOlder, loadingOlder, onLoadOlder,
 }: MessageThreadProps) {
   const { t, fmt } = useLocale()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -160,7 +161,7 @@ export function MessageThread({
                         {sender.name}
                       </span>
                     )}
-                    <MessageBubble message={m} direction={out ? 'out' : 'in'} position={position} onRetry={onRetry} />
+                    <MessageBubble message={m} direction={out ? 'out' : 'in'} position={position} onRetry={onRetry} onOpen={onOpen} />
                   </div>
                 </div>
               </Fragment>
