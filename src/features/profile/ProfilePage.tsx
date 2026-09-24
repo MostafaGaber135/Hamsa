@@ -5,7 +5,7 @@ import { Button, IconButton } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { TextField } from '@/components/ui/TextField'
 import { useLocale } from '@/lib/i18n'
-import { disablePush, enablePush, getPushStatus, type PushStatus } from '@/lib/push'
+import { PushServiceError, disablePush, enablePush, getPushStatus, type PushStatus } from '@/lib/push'
 import { useDebounced } from '@/lib/useDebounced'
 import type { User } from '@/types/chat'
 import { USERNAME_PATTERN, UsernameTakenError, validateImage } from './api'
@@ -283,7 +283,7 @@ function NotificationsCard() {
         setStatus(await enablePush())
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(e instanceof PushServiceError ? t.push.serviceError : e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(false)
     }

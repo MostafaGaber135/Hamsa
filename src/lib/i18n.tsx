@@ -224,6 +224,7 @@ const strings = {
       needsInstall: 'On iPhone and iPad: tap Share → “Add to Home Screen”, open Hamsa from there, then turn notifications on.',
       notConfigured: 'Notifications aren’t set up on this site yet.',
       muted: 'Muted chats never notify you.',
+      serviceError: 'Your browser couldn’t reach its notification service. In Brave: Settings → Privacy → turn on “Use Google services for push messaging”. Otherwise, turn off VPNs or ad-blockers for this site, restart the browser and try again.',
     },
     geo: {
       denied: 'Location is blocked for this site. Allow it from the icon next to the address bar.',
@@ -483,6 +484,7 @@ const strings = {
       needsInstall: 'على الآيفون والآيباد: اضغط مشاركة ← «إضافة إلى الشاشة الرئيسية»، وافتح همسة من هناك، ثم فعّل الإشعارات.',
       notConfigured: 'الإشعارات غير مُعدّة على هذا الموقع بعد.',
       muted: 'المحادثات المكتومة لا ترسل إشعارات.',
+      serviceError: 'تعذّر على المتصفح الوصول إلى خدمة الإشعارات. في Brave: الإعدادات ← الخصوصية ← فعّل «Use Google services for push messaging». غير ذلك، أوقف الـ VPN أو مانع الإعلانات لهذا الموقع، وأعد تشغيل المتصفح وحاول مرة أخرى.',
     },
     geo: {
       denied: 'الموقع محظور لهذا الموقع. اسمح به من الأيقونة بجانب شريط العنوان.',

@@ -49,18 +49,41 @@ async function save(subscription: PushSubscription) {
   if (error) throw error
 }
 
+/** Thrown when the browser's own push service can't be reached (Brave, VPNs, ad-blockers…). */
+export class PushServiceError extends Error {}
+
+function sameKey(subscription: PushSubscription, key: Uint8Array) {
+  const current = subscription.options.applicationServerKey
+  if (!current) return false
+  const bytes = new Uint8Array(current)
+  return bytes.length === key.length && bytes.every((b, i) => b === key[i])
+}
+
 /** Asks for permission, subscribes this browser, and saves it for the signed-in user. */
 export async function enablePush(): Promise<PushStatus> {
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') return permission === 'denied' ? 'blocked' : 'off'
 
+  const key = base64UrlToBytes(VAPID_PUBLIC_KEY!.trim())
   const registration = await navigator.serviceWorker.ready
-  const subscription =
-    (await registration.pushManager.getSubscription()) ??
-    (await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: base64UrlToBytes(VAPID_PUBLIC_KEY!),
-    }))
+  let subscription = await registration.pushManager.getSubscription()
+
+  // A subscription made with an older key can't receive pushes signed with the new one.
+  if (subscription && !sameKey(subscription, key)) {
+    await subscription.unsubscribe()
+    subscription = null
+  }
+
+  if (!subscription) {
+    try {
+      subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key })
+    } catch (e) {
+      // "Registration failed - push service error": the browser couldn't reach its push server.
+      if (e instanceof DOMException && e.name === 'AbortError') throw new PushServiceError(e.message)
+      throw e
+    }
+  }
+
   await save(subscription)
   return 'on'
 }
