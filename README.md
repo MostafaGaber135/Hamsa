@@ -1,127 +1,228 @@
+<div align="center">
+
+<img src="public/hamsa-mark.svg" width="72" alt="Hamsa logo" />
+
 # Hamsa · همسة
 
-A real-time chat app built with React, TypeScript and Tailwind CSS v4, designed as a quiet room:
-warm surfaces, one teal accent, and message states you can read at a glance. Full English and
-Arabic (RTL) support, light and dark themes.
+**A real-time chat app that feels like a quiet room.**
 
-> Status: **Feature-complete.** Real-time messaging, friends, profiles and image sharing on Supabase.
+Live messaging, typing indicators, online presence, read receipts, friends and image sharing —
+fully bilingual (English / Arabic with real RTL), in light and dark themes.
 
-## Run it
+[**Live demo**](https://your-app.vercel.app) · [Design system](https://claude.ai/artifact/6tYWvRDFXbqZE5QsoW8Sfz) · [Report a bug](https://github.com/MostafaGaber135/Hamsa/issues)
 
-1. Create a free project at [supabase.com](https://supabase.com).
-2. In the dashboard, open **SQL Editor → New query**, and run each file in
-   `supabase/migrations/` once, in order (oldest first).
-3. Copy `.env.example` to `.env.local` and fill in the URL and publishable key
-   (**Project Settings → API**).
-4. For quick local testing, turn off **Authentication → Sign In / Providers → Email → Confirm email**,
-   or confirm each account from its inbox.
-5. Start the app:
+![React](https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_v4-06B6D4?logo=tailwindcss&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?logo=supabase&logoColor=white)
+![TanStack Query](https://img.shields.io/badge/TanStack_Query-FF4154?logo=reactquery&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)
+
+</div>
+
+<!-- Add your screenshots to docs/screenshots/ with these names, or change the paths. -->
+<p align="center">
+  <img src="docs/screenshots/desktop-light.png" width="100%" alt="Hamsa on desktop, light theme" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/friends.png" width="49%" alt="Friends page" />
+  <img src="docs/screenshots/profile.png" width="49%" alt="Profile page, dark theme" />
+</p>
+
+---
+
+## Features
+
+**Messaging**
+- Real-time messages, no refresh — sent optimistically, then confirmed by the server
+- Delivery states you can read at a glance: sending, sent, read, failed with one-click retry
+- Read receipts and unread counts that update live
+- Image messages: attach, paste a screenshot, preview before sending
+- Emoji picker, per-conversation drafts, and an unread count in the browser tab
+- Smart scrolling: follows new messages when you're at the bottom, shows a "new messages" button when you're reading history, and loads older messages as you scroll up
+
+**Presence**
+- Online status and "last seen"
+- "Sara is typing…" in the chat, the header and the conversation list
+
+**People**
+- One-to-one chats and groups
+- Friends: search people, send, accept, decline and cancel requests
+- Conversation menu: pin, mute, mark as read / unread, delete chat (for you only), leave group — via the ⋯ button, right-click, or Shift + F10
+
+**Account**
+- Email + password and Google sign-in (one button signs up *and* signs in)
+- Profile page: name, username with a live availability check, photo upload (cropped and resized in the browser), password change
+- Google profile photo imported automatically
+
+**Experience**
+- English and Arabic, with the whole layout mirrored through logical CSS — no RTL-specific styles
+- Light and dark themes built on design tokens
+- Keyboard accessible throughout: one tab stop for the conversation list with arrow-key navigation, visible focus rings, accessible menus and dialogs
+- Responsive: three-pane desktop layout, two-screen mobile flow
+- Respects `prefers-reduced-motion`
+- A "Reconnecting…" banner when the connection drops, then catches up on anything missed
+
+---
+
+## Tech stack
+
+| | |
+|---|---|
+| **Frontend** | React 19, TypeScript, Vite |
+| **Styling** | Tailwind CSS v4 with CSS-variable design tokens, Lucide icons |
+| **Server state** | TanStack Query (caching, infinite queries, optimistic updates) |
+| **Backend** | Supabase: PostgreSQL, Auth, Storage, Realtime |
+| **Realtime** | Postgres Changes (messages, receipts), Presence (online), Broadcast (typing) |
+| **Security** | Row Level Security on every table, private Realtime channels, private storage |
+
+---
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Browser["Browser — React"]
+    UI[UI components] --> Q[TanStack Query cache]
+    UI --> RT[Realtime hooks]
+    RT -- patches --> Q
+  end
+
+  subgraph Supabase
+    Auth[Auth]
+    DB[(PostgreSQL<br/>+ RLS)]
+    ST[Storage<br/>private bucket]
+    RL[Realtime]
+  end
+
+  Q -- REST / RPC --> DB
+  Q -- signed URLs --> ST
+  RT -- Postgres Changes --> RL
+  RT -- Presence / Broadcast --> RL
+  RL -. reads with RLS .-> DB
+  UI --> Auth
+```
+
+The UI reads everything through TanStack Query. Realtime events don't trigger refetches: they patch
+the cache directly (a new message is inserted into the right page, a read receipt updates one member),
+so the screen updates instantly with no extra requests.
+
+---
+
+## Security
+
+All access rules live in the database, not in the frontend, so they hold even if someone calls the API directly.
+
+- **Row Level Security on every table.** You can only read conversations you're a member of, and only send messages as yourself. One `is_member()` function guards messages, participants and image files.
+- **No recursive policies.** `is_member()` is `security definer`, which avoids the classic infinite-recursion bug when a membership table's policy checks membership.
+- **Multi-table writes go through functions.** Creating a conversation and adding its members happens in one transaction.
+- **Column-level privileges.** On your own profile you can edit only your name, username and photo — never your id or timestamps.
+- **The server owns time.** A trigger sets `created_at`, so messages can't be back-dated.
+- **Private Realtime channels.** Typing channels (`typing:<conversation-id>`) are restricted to that conversation's members by policies on `realtime.messages`.
+- **Private image storage.** Chat images are only reachable through short-lived signed URLs, and only members can upload to a conversation's folder.
+
+The security rules are covered by SQL tests in [`supabase/tests`](supabase/tests): outsiders can't read or write a conversation, nobody can impersonate another user, and uploads are limited to members.
+
+---
+
+## Engineering decisions
+
+**Client-generated message ids.** Each message gets its id from `crypto.randomUUID()` in the browser. When Realtime echoes your own insert back, it's matched by id and merged instead of appearing twice — and a retry after a network error can never create a duplicate.
+
+**Read receipts from one timestamp.** Each member has a single `last_read_at` per conversation. Unread count = messages after mine; "read" = every other member's `last_read_at` has passed the message. One update per conversation opened, instead of one row per message.
+
+**One row per friendship.** A unique index on the sorted pair of user ids means A→B and B→A can't both exist. If B sends a request while A's is pending, it becomes an acceptance.
+
+**Per-person conversation settings.** Pin, mute, "mark as unread" and "delete chat" are stored on your participant row, so they never affect anyone else. "Mark as unread" is a flag rather than a change to `last_read_at`, so other people's read receipts stay correct.
+
+**Bubble shape vs. content direction.** A bubble's corners follow the interface direction; its text uses `dir="auto"`. An English message in the Arabic interface keeps its own direction and its timestamp on the correct side.
+
+**Images resized before upload.** A multi-megabyte phone photo is scaled in the browser (to 1600 px for messages, 256 px for avatars) before it's sent.
+
+---
+
+## Getting started
+
+### 1. Create a Supabase project
+
+Create a free project at [supabase.com](https://supabase.com). In **SQL Editor → New query**, paste and run
+[`supabase/schema.sql`](supabase/schema.sql) once. It creates every table, policy, function, storage bucket and Realtime rule.
+
+> The same schema is also split into step-by-step files in [`supabase/migrations`](supabase/migrations), in the order it was built.
+
+### 2. Configure environment variables
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in the values from **Project Settings → API** (or the **Connect** button):
+
+```env
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```
+
+The publishable key is safe in the browser — Row Level Security is what protects the data.
+
+### 3. Run it
 
 ```bash
 npm install
 npm run dev
 ```
 
-To try a conversation, sign up two accounts: one in a normal window and one in a private window.
+Open <http://localhost:5173>. To try a conversation, sign up two accounts, one in a normal window and one in a private window.
+
+> For quick local testing, you can turn off **Authentication → Sign In / Providers → Email → Confirm email**.
 
 ### Google sign-in (optional)
 
-Create an OAuth client in Google Cloud Console, add the callback URL Supabase shows under
-**Authentication → Providers → Google**, and paste the client id and secret there. Add
-`http://localhost:5173` to **Authentication → URL Configuration → Redirect URLs**.
+1. In Google Cloud Console → **Google Auth Platform**, create a **Web application** client.
+2. Add `http://localhost:5173` to *Authorized JavaScript origins*, and `https://<your-project-id>.supabase.co/auth/v1/callback` to *Authorized redirect URIs*.
+3. In Supabase → **Authentication → Sign In / Providers → Google**, enable it and paste the client ID and secret.
+4. In **Authentication → URL Configuration**, set the Site URL and add your app's URL to Redirect URLs.
 
-## What works now
+---
 
-- Email + password and Google sign-in; a profile is created automatically on sign-up
-- New chat: search people, start a 1:1 conversation, or pick several and create a group
-- Conversations and messages load from Supabase with TanStack Query; older messages page in 30 at a time
-- Live updates with Supabase Realtime: new messages, read receipts, unread counts, new conversations
-  and friend requests arrive without refreshing; a "Reconnecting…" banner shows when the connection drops
-- Online status and "last seen" (Presence), and "Sara is typing…" (Broadcast)
-- Image messages: attach, paste a screenshot, preview before sending; resized in the browser, stored
-  in a private bucket and shown through signed links
-- Emoji picker, drafts kept per conversation, smart scrolling with a "new messages" button,
-  older messages load as you scroll up, unread count in the tab title
-- Optimistic sending: the message appears at once as "sending", then "sent"; failures can be retried
-- Read receipts and unread counts from one `last_read_at` per member
-- Friends: find people, send / accept / decline / cancel requests, remove friends, message a friend
-- Profile photos from Google, with an initials fallback if the image fails to load
-- Public privacy policy page at `/privacy` (required by Google sign-in)
-- Conversation menu (the "⋯" button, right-click, or Shift+F10): pin, mute, mark as read/unread,
-  delete chat (for you only), leave group — all optimistic, all per-person
-- My profile: change name and username (live availability check), upload or remove a photo
-  (cropped and resized to 256×256 in the browser before upload), and change or set a password
-
-- Conversation list with search, filters (All / Unread / Groups), unread badges, muted state,
-  typing preview, and own-message status icons
-- Keyboard navigation in the list: one tab stop, ↑/↓, Home/End, Enter, type-a-letter to jump
-- Message thread with runs, "tail" corners, date separators, sender names in groups, images
-- All message states: sending, sent, read, failed with retry, typing indicator
-- Composer that grows to 6 lines; Enter sends, Shift+Enter adds a line, safe with IME input
-- RTL that mirrors through logical CSS only; mixed Arabic/English text keeps its own direction
-- Responsive: three-pane desktop, two-screen mobile flow
-- Reduced-motion support and visible keyboard focus everywhere
-
-## Structure
+## Project structure
 
 ```
 src/
-├── components/ui/        Button, IconButton, TextField, Avatar, Badge, Spinner, BrandMark
+├── components/ui/        Button, Avatar, Badge, Menu, TextField, Spinner…
 ├── features/
-│   ├── auth/             LoginPage, useSession
-│   ├── chat/             ChatApp: the signed-in app shell
-│   ├── conversations/    api.ts, queries.ts, Sidebar, ConversationList, NewChatDialog…
-│   ├── friends/          api.ts, queries.ts, FriendsPage
-│   ├── realtime/         useLiveUpdates, usePresence, useTyping
-│   ├── legal/            PrivacyPage
-│   ├── profile/          api.ts, queries.ts, ProfilePage
-│   └── messages/         api.ts, queries.ts, ChatPane, MessageThread, MessageBubble, Composer…
-├── lib/                  supabase client, i18n + dates, theme, message status, avatar tints
+│   ├── auth/             Login and sign-up, session
+│   ├── chat/             The signed-in app shell
+│   ├── conversations/    Sidebar, conversation list and menu, new chat dialog
+│   ├── messages/         Thread, message bubble, composer, emoji picker
+│   ├── friends/          Friends, requests, people search
+│   ├── profile/          Profile editing
+│   ├── realtime/         Live updates, presence, typing
+│   └── legal/            Privacy policy
+├── lib/                  Supabase client, i18n and dates, theme, image resizing
+├── styles/               Design tokens and the Tailwind theme
+└── types/                App types and generated database types
 supabase/
-├── migrations/           the schema, RLS policies and functions
+├── schema.sql            The complete database in one file
+├── migrations/           The same schema, step by step
 └── tests/                SQL tests for the security rules
-├── styles/               design tokens (CSS variables) + Tailwind v4 theme
-└── types/chat.ts         User, Conversation, Message
 ```
 
-## Decisions worth knowing
+Each feature keeps its own `api.ts` (Supabase calls), `queries.ts` (TanStack Query hooks) and components together.
 
-- **Row Level Security on every table.** A single `is_member()` check guards conversations,
-  participants, messages and image files. It's `security definer` so the participants policy
-  doesn't call itself forever (the classic RLS recursion bug).
-- **Multi-table writes go through functions.** Creating a conversation and adding its members
-  happens in one transaction (`get_or_create_direct_conversation`, `create_group_conversation`),
-  and a unique `direct_key` makes duplicate 1:1 chats impossible, even if both people click at once.
-- **Read receipts from one timestamp.** Each member has a `last_read_at`. Unread count = messages
-  after mine; "read" = every other member's `last_read_at` is past the message. One update per
-  conversation opened instead of one per message.
-- **Friendships are one row per pair.** A unique index on the sorted pair of ids means A→B and
-  B→A can't both exist; if B sends a request while A's is pending, it becomes an acceptance.
-- **Column-level privileges on profiles.** Even on your own row, only `full_name`, `username`
-  and `avatar_url` are writable; `id`, `created_at` and `last_seen_at` are not.
-- **Private Realtime channels.** Typing indicators use one channel per conversation
-  (`typing:<id>`); policies on `realtime.messages` let only that conversation's members join.
-  Online status is limited to signed-in users.
-- **The server owns time.** A trigger overwrites `created_at`, so nobody can back-date a message.
-- **One request for the sidebar.** `get_my_conversations()` returns members, last message and unread
-  count together, and runs as the caller so RLS still applies.
+---
 
-- **Tokens as CSS variables, Tailwind maps to them** (`@theme inline`), so light/dark switch at
-  runtime by changing one `data-theme` attribute — no `dark:` classes in components.
-- **Logical properties only** (`ms-`, `end-`, `rounded-es-`), so `dir="rtl"` mirrors the whole app.
-- **Bubble shape vs. content direction:** the bubble's corners follow the thread; the content inside
-  uses `dir="auto"`, so an English message in Arabic UI keeps its time on the correct side.
-- **Client-generated message ids** (`crypto.randomUUID()`): when Realtime echoes our own insert back,
-  we recognise it by id instead of showing the message twice.
+## Roadmap
 
-## Next
-
-- [ ] Browser notifications for new messages while the tab is in the background
+- [ ] Browser notifications for new messages in background tabs
 - [ ] Unit tests (Vitest) and end-to-end tests (Playwright) in CI
-- [ ] Deploy to Vercel
+- [ ] Message reactions and replies
+- [ ] Group management: rename, add and remove members
 
-## Testing the security rules
+---
 
-`supabase/tests/10_security_tests.sql` signs in as three users and checks that outsiders can't read
-or write a conversation, nobody can send as someone else, and uploads are limited to members.
-It runs on plain PostgreSQL with `00_supabase_stub.sql` standing in for Supabase's `auth` schema.
+## Author
+
+**Mostafa Gaber** — Frontend Developer
+
+[Portfolio](https://mostafagaberahmed.site) · [LinkedIn](https://linkedin.com/in/mostafagaber135) · [GitHub](https://github.com/MostafaGaber135)
