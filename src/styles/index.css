@@ -1,0 +1,53 @@
+@import "tailwindcss";
+@import "./hamsa-tokens.css";
+@import "./hamsa-theme.css";
+
+/* Motion from the design system: typing dots bob 1.2s, new messages rise 4px over 180ms. */
+@theme {
+  --animate-typing: typing 1.2s ease-in-out infinite;
+  --animate-rise: rise 180ms ease-out;
+
+  @keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+    30% { transform: translateY(-3px); opacity: 1; }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+@layer base {
+  html, body, #root { height: 100%; }
+
+  body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Arabic UI gets the Arabic-first font stack. */
+  [dir="rtl"] body { font-family: var(--font-arabic); }
+
+  ::selection { background: var(--accent-soft); }
+
+  /* Tailwind v4 removed the pointer cursor from buttons; bring it back everywhere. */
+  button:not(:disabled),
+  [role="button"],
+  [role="option"],
+  [role="tab"],
+  a[href],
+  summary,
+  label:has(input[type="checkbox"], input[type="radio"]) {
+    cursor: pointer;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

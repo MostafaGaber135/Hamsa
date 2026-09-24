@@ -1,0 +1,26 @@
+import type { Session } from '@supabase/supabase-js'
+import { useEffect, useState } from 'react'
+import { queryClient } from '@/lib/queryClient'
+import { supabase } from '@/lib/supabase'
+
+/** The current session, kept in sync with sign-in, sign-out and token refresh. */
+export function useSession() {
+  const [session, setSession] = useState<Session | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setLoading(false)
+    })
+
+    const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
+      setSession(newSession)
+      // Never show one person's cached chats to the next person on this browser.
+      if (event === 'SIGNED_OUT') queryClient.clear()
+    })
+    return () => data.subscription.unsubscribe()
+  }, [])
+
+  return { session, loading }
+}

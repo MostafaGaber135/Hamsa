@@ -1,0 +1,276 @@
+/* Hamsa design tokens as CSS variables. Import once, before Tailwind's layers.
+   Light is the default; dark applies with data-theme="dark" on <html>, or automatically
+   from the OS setting unless data-theme="light" is set. */
+
+:root, [data-theme="light"] {
+  color-scheme: light;
+  --canvas: #f5f1eb;
+  --canvas-rgb: 245 241 235;
+  --surface: #fcfaf7;
+  --surface-rgb: 252 250 247;
+  --surface-raised: #ffffff;
+  --surface-raised-rgb: 255 255 255;
+  --surface-sunken: #efe9e1;
+  --surface-sunken-rgb: 239 233 225;
+  --surface-hover: #f3eee7;
+  --surface-hover-rgb: 243 238 231;
+  --surface-pressed: #ebe4da;
+  --surface-pressed-rgb: 235 228 218;
+  --surface-selected: #e9f1ee;
+  --surface-selected-rgb: 233 241 238;
+  --line: #e8e1d7;
+  --line-rgb: 232 225 215;
+  --line-strong: #8f8378;
+  --line-strong-rgb: 143 131 120;
+  --ink: #26201b;
+  --ink-rgb: 38 32 27;
+  --ink-muted: #675e55;
+  --ink-muted-rgb: 103 94 85;
+  --ink-subtle: #7c7167;
+  --ink-subtle-rgb: 124 113 103;
+  --accent: #0e6b62;
+  --accent-rgb: 14 107 98;
+  --accent-strong: #0a524b;
+  --accent-strong-rgb: 10 82 75;
+  --accent-soft: #dcece8;
+  --accent-soft-rgb: 220 236 232;
+  --focus-ring: #0e6b62;
+  --focus-ring-rgb: 14 107 98;
+  --on-accent: #ffffff;
+  --on-accent-rgb: 255 255 255;
+  --bubble-out: #d7eae5;
+  --bubble-out-rgb: 215 234 229;
+  --bubble-out-ink: #1b2a27;
+  --bubble-out-ink-rgb: 27 42 39;
+  --bubble-out-meta: #4d635e;
+  --bubble-out-meta-rgb: 77 99 94;
+  --bubble-in: #ffffff;
+  --bubble-in-rgb: 255 255 255;
+  --presence: #23884f;
+  --presence-rgb: 35 136 79;
+  --danger: #b3361f;
+  --danger-rgb: 179 54 31;
+  --danger-soft: #fae5df;
+  --danger-soft-rgb: 250 229 223;
+  --on-danger: #ffffff;
+  --on-danger-rgb: 255 255 255;
+  --warning: #7d520a;
+  --warning-rgb: 125 82 10;
+  --warning-soft: #fbedd0;
+  --warning-soft-rgb: 251 237 208;
+  --scrim: rgba(38, 32, 27, 0.42);
+  --avatar-sand: #efdcc3;
+  --avatar-sand-rgb: 239 220 195;
+  --avatar-sage: #d5e6d1;
+  --avatar-sage-rgb: 213 230 209;
+  --avatar-rose: #f2d5d0;
+  --avatar-rose-rgb: 242 213 208;
+  --avatar-sky: #d3e2ed;
+  --avatar-sky-rgb: 211 226 237;
+  --avatar-plum: #e5d6e9;
+  --avatar-plum-rgb: 229 214 233;
+  --sender-sand: #8a5626;
+  --sender-sand-rgb: 138 86 38;
+  --sender-rose: #a63e52;
+  --sender-rose-rgb: 166 62 82;
+  --sender-sky: #2f5f8a;
+  --sender-sky-rgb: 47 95 138;
+  --sender-plum: #7a4a8c;
+  --sender-plum-rgb: 122 74 140;
+  --sender-sage: #3f7040;
+  --sender-sage-rgb: 63 112 64;
+  --avatar-ink: #3b3029;
+  --avatar-ink-rgb: 59 48 41;
+  --shadow-xs: 0 1px 2px rgba(38, 32, 27, 0.06);
+  --shadow-sm: 0 1px 2px rgba(38, 32, 27, 0.05), 0 4px 12px rgba(38, 32, 27, 0.05);
+  --shadow-md: 0 2px 6px rgba(38, 32, 27, 0.06), 0 8px 24px rgba(38, 32, 27, 0.08);
+  --shadow-lg: 0 4px 12px rgba(38, 32, 27, 0.08), 0 24px 48px rgba(38, 32, 27, 0.14);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #110f0d;
+  --canvas-rgb: 17 15 13;
+  --surface: #181513;
+  --surface-rgb: 24 21 19;
+  --surface-raised: #211d1a;
+  --surface-raised-rgb: 33 29 26;
+  --surface-sunken: #0d0b0a;
+  --surface-sunken-rgb: 13 11 10;
+  --surface-hover: #221e1b;
+  --surface-hover-rgb: 34 30 27;
+  --surface-pressed: #2a2521;
+  --surface-pressed-rgb: 42 37 33;
+  --surface-selected: #1a2926;
+  --surface-selected-rgb: 26 41 38;
+  --line: #2b2622;
+  --line-rgb: 43 38 34;
+  --line-strong: #766b60;
+  --line-strong-rgb: 118 107 96;
+  --ink: #f2ece5;
+  --ink-rgb: 242 236 229;
+  --ink-muted: #aba196;
+  --ink-muted-rgb: 171 161 150;
+  --ink-subtle: #8e8479;
+  --ink-subtle-rgb: 142 132 121;
+  --accent: #5cbcaf;
+  --accent-rgb: 92 188 175;
+  --accent-strong: #86d3c7;
+  --accent-strong-rgb: 134 211 199;
+  --accent-soft: #15302c;
+  --accent-soft-rgb: 21 48 44;
+  --focus-ring: #5cbcaf;
+  --focus-ring-rgb: 92 188 175;
+  --on-accent: #07201c;
+  --on-accent-rgb: 7 32 28;
+  --bubble-out: #1b3934;
+  --bubble-out-rgb: 27 57 52;
+  --bubble-out-ink: #e7f3f0;
+  --bubble-out-ink-rgb: 231 243 240;
+  --bubble-out-meta: #9fbcb6;
+  --bubble-out-meta-rgb: 159 188 182;
+  --bubble-in: #25211d;
+  --bubble-in-rgb: 37 33 29;
+  --presence: #4cc47f;
+  --presence-rgb: 76 196 127;
+  --danger: #f38a73;
+  --danger-rgb: 243 138 115;
+  --danger-soft: #3a1d16;
+  --danger-soft-rgb: 58 29 22;
+  --on-danger: #2a0c05;
+  --on-danger-rgb: 42 12 5;
+  --warning: #f1bc62;
+  --warning-rgb: 241 188 98;
+  --warning-soft: #30240e;
+  --warning-soft-rgb: 48 36 14;
+  --scrim: rgba(0, 0, 0, 0.6);
+  --avatar-sand: #4a3b28;
+  --avatar-sand-rgb: 74 59 40;
+  --avatar-sage: #2f4430;
+  --avatar-sage-rgb: 47 68 48;
+  --avatar-rose: #4d2c28;
+  --avatar-rose-rgb: 77 44 40;
+  --avatar-sky: #263b4b;
+  --avatar-sky-rgb: 38 59 75;
+  --avatar-plum: #3f2c46;
+  --avatar-plum-rgb: 63 44 70;
+  --sender-sand: #e0b384;
+  --sender-sand-rgb: 224 179 132;
+  --sender-rose: #f0a1ae;
+  --sender-rose-rgb: 240 161 174;
+  --sender-sky: #93bde0;
+  --sender-sky-rgb: 147 189 224;
+  --sender-plum: #cfa6de;
+  --sender-plum-rgb: 207 166 222;
+  --sender-sage: #9fcf98;
+  --sender-sage-rgb: 159 207 152;
+  --avatar-ink: #f2e9e0;
+  --avatar-ink-rgb: 242 233 224;
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.4), 0 24px 48px rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --canvas: #110f0d;
+    --canvas-rgb: 17 15 13;
+    --surface: #181513;
+    --surface-rgb: 24 21 19;
+    --surface-raised: #211d1a;
+    --surface-raised-rgb: 33 29 26;
+    --surface-sunken: #0d0b0a;
+    --surface-sunken-rgb: 13 11 10;
+    --surface-hover: #221e1b;
+    --surface-hover-rgb: 34 30 27;
+    --surface-pressed: #2a2521;
+    --surface-pressed-rgb: 42 37 33;
+    --surface-selected: #1a2926;
+    --surface-selected-rgb: 26 41 38;
+    --line: #2b2622;
+    --line-rgb: 43 38 34;
+    --line-strong: #766b60;
+    --line-strong-rgb: 118 107 96;
+    --ink: #f2ece5;
+    --ink-rgb: 242 236 229;
+    --ink-muted: #aba196;
+    --ink-muted-rgb: 171 161 150;
+    --ink-subtle: #8e8479;
+    --ink-subtle-rgb: 142 132 121;
+    --accent: #5cbcaf;
+    --accent-rgb: 92 188 175;
+    --accent-strong: #86d3c7;
+    --accent-strong-rgb: 134 211 199;
+    --accent-soft: #15302c;
+    --accent-soft-rgb: 21 48 44;
+    --focus-ring: #5cbcaf;
+    --focus-ring-rgb: 92 188 175;
+    --on-accent: #07201c;
+    --on-accent-rgb: 7 32 28;
+    --bubble-out: #1b3934;
+    --bubble-out-rgb: 27 57 52;
+    --bubble-out-ink: #e7f3f0;
+    --bubble-out-ink-rgb: 231 243 240;
+    --bubble-out-meta: #9fbcb6;
+    --bubble-out-meta-rgb: 159 188 182;
+    --bubble-in: #25211d;
+    --bubble-in-rgb: 37 33 29;
+    --presence: #4cc47f;
+    --presence-rgb: 76 196 127;
+    --danger: #f38a73;
+    --danger-rgb: 243 138 115;
+    --danger-soft: #3a1d16;
+    --danger-soft-rgb: 58 29 22;
+    --on-danger: #2a0c05;
+    --on-danger-rgb: 42 12 5;
+    --warning: #f1bc62;
+    --warning-rgb: 241 188 98;
+    --warning-soft: #30240e;
+    --warning-soft-rgb: 48 36 14;
+    --scrim: rgba(0, 0, 0, 0.6);
+    --avatar-sand: #4a3b28;
+    --avatar-sand-rgb: 74 59 40;
+    --avatar-sage: #2f4430;
+    --avatar-sage-rgb: 47 68 48;
+    --avatar-rose: #4d2c28;
+    --avatar-rose-rgb: 77 44 40;
+    --avatar-sky: #263b4b;
+    --avatar-sky-rgb: 38 59 75;
+    --avatar-plum: #3f2c46;
+    --avatar-plum-rgb: 63 44 70;
+    --sender-sand: #e0b384;
+    --sender-sand-rgb: 224 179 132;
+    --sender-rose: #f0a1ae;
+    --sender-rose-rgb: 240 161 174;
+    --sender-sky: #93bde0;
+    --sender-sky-rgb: 147 189 224;
+    --sender-plum: #cfa6de;
+    --sender-plum-rgb: 207 166 222;
+    --sender-sage: #9fcf98;
+    --sender-sage-rgb: 159 207 152;
+    --avatar-ink: #f2e9e0;
+    --avatar-ink-rgb: 242 233 224;
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.25);
+    --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.4), 0 24px 48px rgba(0, 0, 0, 0.55);
+  }
+}
+
+:root {
+  --font-sans: "Plus Jakarta Sans", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-arabic: "IBM Plex Sans Arabic", "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+/* Fonts ship as woff2 in the design system (fonts/); adjust the path to where you serve them. */
+@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 400; font-style: normal; font-display: swap; src: url('/fonts/PlusJakartaSans-400.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 500; font-style: normal; font-display: swap; src: url('/fonts/PlusJakartaSans-500.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 600; font-style: normal; font-display: swap; src: url('/fonts/PlusJakartaSans-600.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 700; font-style: normal; font-display: swap; src: url('/fonts/PlusJakartaSans-700.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 800; font-style: normal; font-display: swap; src: url('/fonts/PlusJakartaSans-800.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans Arabic'; font-weight: 400; font-style: normal; font-display: swap; src: url('/fonts/IBMPlexSansArabic-400.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans Arabic'; font-weight: 500; font-style: normal; font-display: swap; src: url('/fonts/IBMPlexSansArabic-500.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans Arabic'; font-weight: 600; font-style: normal; font-display: swap; src: url('/fonts/IBMPlexSansArabic-600.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans Arabic'; font-weight: 700; font-style: normal; font-display: swap; src: url('/fonts/IBMPlexSansArabic-700.woff2') format('woff2'); }

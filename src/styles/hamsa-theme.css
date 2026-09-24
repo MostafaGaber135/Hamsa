@@ -1,0 +1,120 @@
+/* Hamsa tokens for Tailwind CSS v4 (CSS-first config). Use instead of tailwind.config.js:
+     @import "tailwindcss";
+     @import "./hamsa-tokens.css";
+     @import "./hamsa-theme.css";
+   `inline` makes utilities reference the runtime variables, so light/dark swap live. */
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-pressed: var(--surface-pressed);
+  --color-surface-selected: var(--surface-selected);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-focus-ring: var(--focus-ring);
+  --color-on-accent: var(--on-accent);
+  --color-bubble-out: var(--bubble-out);
+  --color-bubble-out-ink: var(--bubble-out-ink);
+  --color-bubble-out-meta: var(--bubble-out-meta);
+  --color-bubble-in: var(--bubble-in);
+  --color-presence: var(--presence);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-on-danger: var(--on-danger);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-scrim: var(--scrim);
+  --color-avatar-sand: var(--avatar-sand);
+  --color-avatar-sage: var(--avatar-sage);
+  --color-avatar-rose: var(--avatar-rose);
+  --color-avatar-sky: var(--avatar-sky);
+  --color-avatar-plum: var(--avatar-plum);
+  --color-sender-sand: var(--sender-sand);
+  --color-sender-rose: var(--sender-rose);
+  --color-sender-sky: var(--sender-sky);
+  --color-sender-plum: var(--sender-plum);
+  --color-sender-sage: var(--sender-sage);
+  --color-avatar-ink: var(--avatar-ink);
+
+  --font-sans: "Plus Jakarta Sans", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-arabic: "IBM Plex Sans Arabic", "Plus Jakarta Sans", system-ui, sans-serif;
+
+  --text-display: 36px;
+  --text-display--line-height: 40px;
+  --text-display--font-weight: 800;
+  --text-display--letter-spacing: -0.02em;
+  --text-title-1: 30px;
+  --text-title-1--line-height: 36px;
+  --text-title-1--font-weight: 800;
+  --text-title-1--letter-spacing: -0.02em;
+  --text-title-2: 24px;
+  --text-title-2--line-height: 32px;
+  --text-title-2--font-weight: 700;
+  --text-title-2--letter-spacing: -0.01em;
+  --text-title-3: 18px;
+  --text-title-3--line-height: 28px;
+  --text-title-3--font-weight: 700;
+  --text-name: 15px;
+  --text-name--line-height: 20px;
+  --text-name--font-weight: 700;
+  --text-message: 15px;
+  --text-message--line-height: 22px;
+  --text-message--font-weight: 400;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-body--font-weight: 400;
+  --text-preview: 13px;
+  --text-preview--line-height: 20px;
+  --text-preview--font-weight: 400;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-caption--font-weight: 500;
+  --text-overline: 12px;
+  --text-overline--line-height: 16px;
+  --text-overline--font-weight: 700;
+  --text-overline--letter-spacing: 0.06em;
+  --text-meta: 11px;
+  --text-meta--line-height: 16px;
+  --text-meta--font-weight: 500;
+  --text-display-ar: 36px;
+  --text-display-ar--line-height: 52px;
+  --text-display-ar--font-weight: 700;
+  --text-title-ar: 24px;
+  --text-title-ar--line-height: 36px;
+  --text-title-ar--font-weight: 700;
+  --text-message-ar: 16px;
+  --text-message-ar--line-height: 26px;
+  --text-message-ar--font-weight: 400;
+  --text-body-ar: 14px;
+  --text-body-ar--line-height: 24px;
+  --text-body-ar--font-weight: 400;
+  --text-caption-ar: 12px;
+  --text-caption-ar--line-height: 20px;
+  --text-caption-ar--font-weight: 500;
+
+  --spacing: 4px; /* p-3 = 12px, gap-0.5 = 2px */
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 24px;
+  --radius-full: 9999px;
+
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+}
