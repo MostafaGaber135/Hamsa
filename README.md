@@ -6,10 +6,12 @@
 
 **A real-time chat app that feels like a quiet room.**
 
+🔗 **[hamsa-seven.vercel.app](https://hamsa-seven.vercel.app)**
+
 Live messaging, typing indicators, online presence, read receipts, friends and image sharing —
 fully bilingual (English / Arabic with real RTL), in light and dark themes.
 
-[**Live demo**](https://your-app.vercel.app) · [Design system](https://claude.ai/artifact/6tYWvRDFXbqZE5QsoW8Sfz) · [Report a bug](https://github.com/MostafaGaber135/Hamsa/issues)
+[**Live demo**](https://hamsa-seven.vercel.app)
 
 ![React](https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
@@ -75,6 +77,7 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 | **Backend** | Supabase: PostgreSQL, Auth, Storage, Realtime |
 | **Realtime** | Postgres Changes (messages, receipts), Presence (online), Broadcast (typing) |
 | **Security** | Row Level Security on every table, private Realtime channels, private storage |
+| **Hosting** | Vercel (frontend), Supabase (backend, EU region) |
 
 ---
 
@@ -173,6 +176,12 @@ npm run dev
 ```
 
 Open <http://localhost:5173>. To try a conversation, sign up two accounts, one in a normal window and one in a private window.
+
+### Deploy
+
+The app is a static Vite build, deployed on Vercel. Add the same two `VITE_…` variables in
+**Vercel → Project → Settings → Environment Variables**. [`vercel.json`](vercel.json) sends every path
+to `index.html`, so pages like `/privacy` work on refresh.
 
 > For quick local testing, you can turn off **Authentication → Sign In / Providers → Email → Confirm email**.
 
