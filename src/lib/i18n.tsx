@@ -229,7 +229,7 @@ const strings = {
       denied: 'Location is blocked for this site. Allow it from the icon next to the address bar.',
       deviceOff: 'Your browser allows it, but your device’s location services are off. Turn them on in your system settings.',
       unavailable: 'Your device couldn’t find your location. Check that location services are on, then try again.',
-      timeout: 'Finding your location took too long. Try again.',
+      timeout: 'Your device didn’t answer with a location. On Windows, turn on Settings → Privacy & security → Location → “Let desktop apps access your location”, then try again.',
     },
     authFlow: {
       forgot: 'Forgot password?',
@@ -488,7 +488,7 @@ const strings = {
       denied: 'الموقع محظور لهذا الموقع. اسمح به من الأيقونة بجانب شريط العنوان.',
       deviceOff: 'المتصفح يسمح بذلك، لكن خدمات الموقع في جهازك مغلقة. شغّلها من إعدادات النظام.',
       unavailable: 'لم يتمكن جهازك من تحديد موقعك. تأكد من تشغيل خدمات الموقع ثم حاول مرة أخرى.',
-      timeout: 'استغرق تحديد موقعك وقتًا طويلًا. حاول مرة أخرى.',
+      timeout: 'لم يُرسل جهازك موقعك. على ويندوز: شغّل الإعدادات ← الخصوصية والأمان ← الموقع ← «السماح لتطبيقات سطح المكتب بالوصول إلى موقعك»، ثم حاول مرة أخرى.',
     },
     authFlow: {
       forgot: 'نسيت كلمة المرور؟',

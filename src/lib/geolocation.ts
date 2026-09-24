@@ -5,27 +5,32 @@ function getPosition(options: PositionOptions) {
 }
 
 /**
- * Where you are. Tries precise first; if that's slow or unavailable (common on laptops
- * with no GPS), falls back to a quicker, less precise fix instead of failing.
+ * Where you are. Tries three times, each more forgiving:
+ * 1. precise (GPS / Wi-Fi) for up to 15 s
+ * 2. approximate for up to 30 s
+ * 3. the last position the device already knows, however old
+ * Laptops without GPS often need the second or third step.
  */
 export async function locate(): Promise<{ lat: number; lng: number }> {
   if (!('geolocation' in navigator)) throw 'unsupported' satisfies LocationProblem
 
-  let position: GeolocationPosition
-  try {
-    position = await getPosition({ enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 })
-  } catch (first) {
-    const error = first as GeolocationPositionError
-    if (error.code === error.PERMISSION_DENIED) throw await explainDenied()
+  const attempts: PositionOptions[] = [
+    { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 },
+    { enableHighAccuracy: false, timeout: 30_000, maximumAge: 10 * 60_000 },
+    { enableHighAccuracy: false, timeout: 10_000, maximumAge: Infinity },
+  ]
+
+  let last: GeolocationPositionError | undefined
+  for (const options of attempts) {
     try {
-      position = await getPosition({ enableHighAccuracy: false, timeout: 20_000, maximumAge: 5 * 60_000 })
-    } catch (second) {
-      const retry = second as GeolocationPositionError
-      if (retry.code === retry.PERMISSION_DENIED) throw await explainDenied()
-      throw (retry.code === retry.TIMEOUT ? 'timeout' : 'unavailable') satisfies LocationProblem
+      const position = await getPosition(options)
+      return { lat: position.coords.latitude, lng: position.coords.longitude }
+    } catch (e) {
+      last = e as GeolocationPositionError
+      if (last.code === last.PERMISSION_DENIED) throw await explainDenied()
     }
   }
-  return { lat: position.coords.latitude, lng: position.coords.longitude }
+  throw (last?.code === last?.TIMEOUT ? 'timeout' : 'unavailable') satisfies LocationProblem
 }
 
 /**
