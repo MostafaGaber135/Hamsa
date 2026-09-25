@@ -1,7 +1,9 @@
 export type LocationProblem = 'unsupported' | 'denied' | 'deviceOff' | 'unavailable' | 'timeout'
 
 function getPosition(options: PositionOptions) {
-  return new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, options))
+  return new Promise<GeolocationPosition>((resolve, reject) =>
+    navigator.geolocation.getCurrentPosition(resolve, reject, options),
+  )
 }
 
 /**

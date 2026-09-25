@@ -2,7 +2,8 @@
    Light is the default; dark applies with data-theme="dark" on <html>, or automatically
    from the OS setting unless data-theme="light" is set. */
 
-:root, [data-theme="light"] {
+:root,
+[data-theme='light'] {
   color-scheme: light;
   --canvas: #f5f1eb;
   --canvas-rgb: 245 241 235;
@@ -87,7 +88,7 @@
   --shadow-lg: 0 4px 12px rgba(38, 32, 27, 0.08), 0 24px 48px rgba(38, 32, 27, 0.14);
 }
 
-[data-theme="dark"] {
+[data-theme='dark'] {
   color-scheme: dark;
   --canvas: #110f0d;
   --canvas-rgb: 17 15 13;
@@ -173,7 +174,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme='light']) {
     color-scheme: dark;
     --canvas: #110f0d;
     --canvas-rgb: 17 15 13;
@@ -260,17 +261,71 @@
 }
 
 :root {
-  --font-sans: "Plus Jakarta Sans", "IBM Plex Sans Arabic", system-ui, sans-serif;
-  --font-arabic: "IBM Plex Sans Arabic", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --font-arabic: 'IBM Plex Sans Arabic', 'Plus Jakarta Sans', system-ui, sans-serif;
 }
 
 /* Fonts ship as woff2 in the design system (fonts/); adjust the path to where you serve them. */
-@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 400; font-style: normal; font-display: swap; src: url('/fonts/PlusJakartaSans-400.woff2') format('woff2'); }
-@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 500; font-style: normal; font-display: swap; src: url('/fonts/PlusJakartaSans-500.woff2') format('woff2'); }
-@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 600; font-style: normal; font-display: swap; src: url('/fonts/PlusJakartaSans-600.woff2') format('woff2'); }
-@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 700; font-style: normal; font-display: swap; src: url('/fonts/PlusJakartaSans-700.woff2') format('woff2'); }
-@font-face { font-family: 'Plus Jakarta Sans'; font-weight: 800; font-style: normal; font-display: swap; src: url('/fonts/PlusJakartaSans-800.woff2') format('woff2'); }
-@font-face { font-family: 'IBM Plex Sans Arabic'; font-weight: 400; font-style: normal; font-display: swap; src: url('/fonts/IBMPlexSansArabic-400.woff2') format('woff2'); }
-@font-face { font-family: 'IBM Plex Sans Arabic'; font-weight: 500; font-style: normal; font-display: swap; src: url('/fonts/IBMPlexSansArabic-500.woff2') format('woff2'); }
-@font-face { font-family: 'IBM Plex Sans Arabic'; font-weight: 600; font-style: normal; font-display: swap; src: url('/fonts/IBMPlexSansArabic-600.woff2') format('woff2'); }
-@font-face { font-family: 'IBM Plex Sans Arabic'; font-weight: 700; font-style: normal; font-display: swap; src: url('/fonts/IBMPlexSansArabic-700.woff2') format('woff2'); }
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/PlusJakartaSans-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/PlusJakartaSans-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/PlusJakartaSans-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/PlusJakartaSans-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/PlusJakartaSans-800.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans Arabic';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/IBMPlexSansArabic-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans Arabic';
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/IBMPlexSansArabic-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans Arabic';
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/IBMPlexSansArabic-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans Arabic';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/IBMPlexSansArabic-700.woff2') format('woff2');
+}

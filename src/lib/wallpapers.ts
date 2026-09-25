@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react'
 
 export const WALLPAPERS = ['default', 'sand', 'sage', 'sky', 'rose', 'plum', 'dots', 'grid', 'waves'] as const
-export type Wallpaper = (typeof WALLPAPERS)[number]
+/** No wallpaper chosen: the plain chat background. */
+export const DEFAULT_WALLPAPER = WALLPAPERS[0]
 
 const tint = (token: string) => `color-mix(in srgb, var(--avatar-${token}) 45%, var(--surface))`
 const ink = 'color-mix(in srgb, var(--line-strong) 28%, transparent)'

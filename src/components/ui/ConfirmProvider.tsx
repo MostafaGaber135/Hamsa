@@ -40,14 +40,18 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           onClose={() => finish(false)}
           footer={
             <>
-              <Button variant="ghost" onClick={() => finish(false)}>{t.confirm.cancel}</Button>
+              <Button variant="ghost" onClick={() => finish(false)}>
+                {t.confirm.cancel}
+              </Button>
               <Button variant={pending.options.danger ? 'danger' : 'primary'} onClick={() => finish(true)} autoFocus>
                 {pending.options.confirmLabel}
               </Button>
             </>
           }
         >
-          <p dir="auto" className="text-body text-ink">{pending.options.message}</p>
+          <p dir="auto" className="text-body text-ink">
+            {pending.options.message}
+          </p>
         </Dialog>
       )}
     </ConfirmContext>

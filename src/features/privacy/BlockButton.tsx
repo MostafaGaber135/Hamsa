@@ -17,8 +17,9 @@ export function BlockButton({ user }: { user: User }) {
   function toggle() {
     if (isBlocked) setBlocked.mutate({ userId: user.id, blocked: false })
     else {
-      void confirm({ message: t.block.confirm(user.name), confirmLabel: t.block.block(user.name), danger: true })
-        .then((ok) => ok && setBlocked.mutate({ userId: user.id, blocked: true }))
+      void confirm({ message: t.block.confirm(user.name), confirmLabel: t.block.block(user.name), danger: true }).then(
+        (ok) => ok && setBlocked.mutate({ userId: user.id, blocked: true }),
+      )
     }
   }
 

@@ -6,7 +6,9 @@ const MIGRATIONS = 'supabase/migrations'
 const OUTPUT = 'supabase/schema.sql'
 const RULE = '-- ' + '='.repeat(69)
 
-const files = readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort()
+const files = readdirSync(MIGRATIONS)
+  .filter((f) => f.endsWith('.sql'))
+  .sort()
 
 // Each migration starts with a comment block (its title, and "run once / run after"
 // notes that only make sense for the separate files); keep the title, drop the rest.
@@ -25,7 +27,10 @@ function parse(file) {
   const joined = titleLines.join(' ').trim() || file
   const title = joined[0].toUpperCase() + joined.slice(1)
   const headerEnd = lines.findIndex((l, i) => i > 0 && l === RULE)
-  const body = lines.slice(headerEnd + 1).join('\n').trim()
+  const body = lines
+    .slice(headerEnd + 1)
+    .join('\n')
+    .trim()
   return { file, title, body }
 }
 
@@ -48,9 +53,7 @@ ${contents}
 ${RULE}
 `
 
-const sections = parts.map(
-  (p, i) => `\n\n${RULE}\n-- ${i + 1}. ${p.title}\n--    (${p.file})\n${RULE}\n\n${p.body}\n`,
-)
+const sections = parts.map((p, i) => `\n\n${RULE}\n-- ${i + 1}. ${p.title}\n--    (${p.file})\n${RULE}\n\n${p.body}\n`)
 
 writeFileSync(OUTPUT, header + sections.join(''))
 console.log(`${OUTPUT}: ${files.length} migrations`)

@@ -1,3 +1,4 @@
+/** "Today", "Yesterday", "Monday"… between the messages of different days; it sticks to the top while scrolling. */
 export function DateSeparator({ label }: { label: string }) {
   return (
     <div role="separator" aria-label={label} className="sticky top-2 z-10 my-3 flex justify-center">

@@ -3,21 +3,19 @@
 // and the result is cached for a week in public.link_previews. Text only: no images.
 //
 // Called by signed-in users only (it checks their token).
-// SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided automatically.
 
-import { createClient } from 'npm:@supabase/supabase-js@2'
-
-const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
-
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
+import { admin } from '../_shared/admin.ts'
+import { cors, preflight } from '../_shared/cors.ts'
 
 const CACHE_DAYS = 7
+const DAY_MS = 24 * 60 * 60 * 1000
+/** Enough of the page for its <head>. */
 const MAX_BYTES = 512 * 1024
 const TIMEOUT_MS = 5000
+const MAX_URL_LENGTH = 2048
+const MAX_TITLE = 200
+const MAX_DESCRIPTION = 300
+const MAX_SITE_NAME = 100
 
 interface Preview {
   title: string | null
@@ -27,14 +25,15 @@ interface Preview {
 
 /** Public web pages only: no IP addresses, local names or other ports. */
 function isFetchable(raw: unknown): raw is string {
-  if (typeof raw !== 'string' || raw.length > 2048) return false
+  if (typeof raw !== 'string' || raw.length > MAX_URL_LENGTH) return false
   try {
     const url = new URL(raw)
     if (url.protocol !== 'https:' && url.protocol !== 'http:') return false
     if (url.port && url.port !== '80' && url.port !== '443') return false
     if (url.username || url.password) return false
     const host = url.hostname.toLowerCase()
-    if (!host.includes('.') || host.endsWith('.local') || host.endsWith('.internal') || host === 'localhost') return false
+    if (!host.includes('.') || host.endsWith('.local') || host.endsWith('.internal') || host === 'localhost')
+      return false
     // IPv4 or IPv6 literals (e.g. 169.254.169.254, [::1]).
     if (/^[\d.]+$/.test(host) || host.startsWith('[')) return false
     return true
@@ -106,15 +105,21 @@ async function fetchPreview(url: string): Promise<Preview> {
 
   const html = await readHead(response)
   return {
-    title: clean(metaContent(html, ['og:title', 'twitter:title']) ?? html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1], 200),
-    description: clean(metaContent(html, ['og:description', 'twitter:description', 'description']), 300),
-    siteName: clean(metaContent(html, ['og:site_name']) ?? new URL(response.url).hostname.replace(/^www\./, ''), 100),
+    title: clean(
+      metaContent(html, ['og:title', 'twitter:title']) ?? html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1],
+      MAX_TITLE,
+    ),
+    description: clean(metaContent(html, ['og:description', 'twitter:description', 'description']), MAX_DESCRIPTION),
+    siteName: clean(
+      metaContent(html, ['og:site_name']) ?? new URL(response.url).hostname.replace(/^www\./, ''),
+      MAX_SITE_NAME,
+    ),
   }
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
-  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: cors })
+  const early = preflight(req)
+  if (early) return early
 
   const token = req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '')
   const { data } = token ? await admin.auth.getUser(token) : { data: { user: null } }
@@ -123,7 +128,7 @@ Deno.serve(async (req) => {
   const { url } = await req.json().catch(() => ({ url: null }))
   if (!isFetchable(url)) return Response.json({ title: null, description: null, siteName: null }, { headers: cors })
 
-  const since = new Date(Date.now() - CACHE_DAYS * 24 * 60 * 60 * 1000).toISOString()
+  const since = new Date(Date.now() - CACHE_DAYS * DAY_MS).toISOString()
   const { data: cached } = await admin
     .from('link_previews')
     .select('title, description, site_name')
@@ -131,7 +136,10 @@ Deno.serve(async (req) => {
     .gt('fetched_at', since)
     .maybeSingle()
   if (cached) {
-    return Response.json({ title: cached.title, description: cached.description, siteName: cached.site_name }, { headers: cors })
+    return Response.json(
+      { title: cached.title, description: cached.description, siteName: cached.site_name },
+      { headers: cors },
+    )
   }
 
   const preview = await fetchPreview(url)

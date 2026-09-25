@@ -80,7 +80,8 @@ function BlockedPeople() {
   let content
   if (blocked.isPending) content = <Spinner />
   else if (blocked.isError) content = <ErrorText>{t.loadError}</ErrorText>
-  else if (blocked.data.length === 0) content = <p className="text-body text-ink-muted">{t.privacySettings.noBlocked}</p>
+  else if (blocked.data.length === 0)
+    content = <p className="text-body text-ink-muted">{t.privacySettings.noBlocked}</p>
   else
     content = (
       <ul className="flex flex-col gap-1">
@@ -88,8 +89,12 @@ function BlockedPeople() {
           <li key={user.id} className="flex items-center gap-3 py-1">
             <Avatar id={user.id} name={user.name} src={user.avatarUrl} size="md" />
             <span className="min-w-0 flex-1">
-              <span dir="auto" className="block truncate text-body font-semibold text-ink">{user.name}</span>
-              <span dir="ltr" className="block truncate text-caption text-ink-muted rtl:text-right">@{user.username}</span>
+              <span dir="auto" className="block truncate text-body font-semibold text-ink">
+                {user.name}
+              </span>
+              <span dir="ltr" className="block truncate text-caption text-ink-muted rtl:text-right">
+                @{user.username}
+              </span>
             </span>
             <Button
               variant="secondary"

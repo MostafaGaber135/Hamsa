@@ -37,7 +37,9 @@ if (!reset.ok) {
   process.exit(1)
 }
 
-const tests = readdirSync(TESTS).filter((f) => f.endsWith('.sql')).sort()
+const tests = readdirSync(TESTS)
+  .filter((f) => f.endsWith('.sql'))
+  .sort()
 const [stub, ...rest] = tests
 run('Supabase stand-in', DB, `${TESTS}/${stub}`)
 run('schema.sql', DB, 'supabase/schema.sql')

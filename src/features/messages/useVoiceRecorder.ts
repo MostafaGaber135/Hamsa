@@ -1,17 +1,31 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export const MAX_RECORDING_MS = 5 * 60 * 1000
+const MAX_RECORDING_MS = 5 * 60 * 1000
+/** Shorter than this is an accidental tap, not a voice note. */
+const MIN_RECORDING_MS = 500
 /** How many bars a voice note's waveform is squeezed into. */
-export const WAVEFORM_BARS = 48
+const WAVEFORM_BARS = 48
 /** How many bars the live view shows while recording. */
 const LIVE_BARS = 40
+/** The shortest bar (0–100), so silence still shows a line. */
+const MIN_BAR = 8
+/** Loudness below this counts as silence when scaling the bars. */
+const QUIET_PEAK = 0.02
+/** Live loudness: sampled every this many ms, and amplified this much for the bars. */
+const SAMPLE_EVERY_MS = 60
+const LIVE_GAIN = 4
+/** Samples per loudness measurement (a power of two, as the analyser requires). */
+const FFT_SIZE = 512
+/** How often the recorder hands over audio, and the timer updates. */
+const CHUNK_MS = 250
+const TICK_MS = 200
 
 // Chrome/Firefox record WebM/Opus; Safari records MP4/AAC.
 const TYPES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']
 
-export type RecorderError = 'blocked' | 'unsupported'
+type RecorderError = 'blocked' | 'unsupported'
 
-export interface Recording {
+interface Recording {
   file: File
   durationMs: number
   waveform: number[]
@@ -19,7 +33,7 @@ export interface Recording {
 
 /** Averages many loudness samples into a fixed number of bars, scaled 0–100. */
 function toBars(samples: number[], bars: number) {
-  if (samples.length === 0) return Array(bars).fill(8)
+  if (samples.length === 0) return Array(bars).fill(MIN_BAR)
   const out: number[] = []
   for (let i = 0; i < bars; i++) {
     const from = Math.floor((i * samples.length) / bars)
@@ -27,8 +41,8 @@ function toBars(samples: number[], bars: number) {
     const slice = samples.slice(from, to)
     out.push(slice.reduce((a, b) => a + b, 0) / slice.length)
   }
-  const peak = Math.max(...out, 0.02)
-  return out.map((v) => Math.max(8, Math.round((v / peak) * 100)))
+  const peak = Math.max(...out, QUIET_PEAK)
+  return out.map((v) => Math.max(MIN_BAR, Math.round((v / peak) * 100)))
 }
 
 /**
@@ -76,11 +90,11 @@ export function useVoiceRecorder(onLimitReached?: (recording: Recording) => void
         const durationMs = Date.now() - startedAt.current
         const waveform = toBars(samples.current, WAVEFORM_BARS)
         r.onstop = () => {
-          const type = r.mimeType || 'audio/webm'
+          const type = r.mimeType
           const extension = type.includes('mp4') ? 'm4a' : type.includes('ogg') ? 'ogg' : 'webm'
           const file = new File(chunks.current, `voice-${Date.now()}.${extension}`, { type })
           release()
-          resolve(durationMs > 500 ? { file, durationMs, waveform } : null) // ignore accidental taps
+          resolve(durationMs > MIN_RECORDING_MS ? { file, durationMs, waveform } : null)
         }
         r.stop()
       }),
@@ -103,7 +117,7 @@ export function useVoiceRecorder(onLimitReached?: (recording: Recording) => void
     // Loudness for the waveform, ~every animation frame.
     const context = new AudioContext()
     const analyser = context.createAnalyser()
-    analyser.fftSize = 512
+    analyser.fftSize = FFT_SIZE
     context.createMediaStreamSource(stream.current).connect(analyser)
     audioContext.current = context
     const data = new Uint8Array(analyser.fftSize)
@@ -114,10 +128,10 @@ export function useVoiceRecorder(onLimitReached?: (recording: Recording) => void
       let sum = 0
       for (const v of data) sum += ((v - 128) / 128) ** 2
       const rms = Math.sqrt(sum / data.length)
-      if (now - lastSample > 60) {
+      if (now - lastSample > SAMPLE_EVERY_MS) {
         lastSample = now
         samples.current.push(rms)
-        setLevels((l) => [...l.slice(-(LIVE_BARS - 1)), Math.min(1, rms * 4)])
+        setLevels((l) => [...l.slice(-(LIVE_BARS - 1)), Math.min(1, rms * LIVE_GAIN)])
       }
       frame.current = requestAnimationFrame(measure)
     }
@@ -129,7 +143,7 @@ export function useVoiceRecorder(onLimitReached?: (recording: Recording) => void
     r.ondataavailable = (e) => {
       if (e.data.size > 0) chunks.current.push(e.data)
     }
-    r.start(250)
+    r.start(CHUNK_MS)
     recorder.current = r
     startedAt.current = Date.now()
     setRecording(true)
@@ -140,7 +154,7 @@ export function useVoiceRecorder(onLimitReached?: (recording: Recording) => void
         const result = await stop()
         if (result) onLimit.current?.(result)
       }
-    }, 200)
+    }, TICK_MS)
   }, [stop])
 
   const cancel = useCallback(() => {
@@ -154,12 +168,15 @@ export function useVoiceRecorder(onLimitReached?: (recording: Recording) => void
   }, [release])
 
   // Leaving the chat mid-recording releases the microphone.
-  useEffect(() => () => {
-    window.clearInterval(timer.current)
-    cancelAnimationFrame(frame.current)
-    audioContext.current?.close().catch(() => undefined)
-    stream.current?.getTracks().forEach((track) => track.stop())
-  }, [])
+  useEffect(
+    () => () => {
+      window.clearInterval(timer.current)
+      cancelAnimationFrame(frame.current)
+      audioContext.current?.close().catch(() => undefined)
+      stream.current?.getTracks().forEach((track) => track.stop())
+    },
+    [],
+  )
 
   return { recording, elapsedMs, levels, error, start, stop, cancel, clearError: () => setError(null) }
 }

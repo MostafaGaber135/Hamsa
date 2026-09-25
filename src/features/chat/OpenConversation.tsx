@@ -29,7 +29,18 @@ interface OpenConversationProps {
 
 /** Its own component so each open conversation gets its own message query and send mutation. */
 export function OpenConversation({
-  conversation, me, users, connection, onTyping, onSent, onBack, onAction, detailsOpen, onToggleDetails, jumpTarget, onCall,
+  conversation,
+  me,
+  users,
+  connection,
+  onTyping,
+  onSent,
+  onBack,
+  onAction,
+  detailsOpen,
+  onToggleDetails,
+  jumpTarget,
+  onCall,
 }: OpenConversationProps) {
   const { t } = useLocale()
   const confirm = useConfirm()
@@ -103,8 +114,11 @@ export function OpenConversation({
           ? {
               onAccept: () => onAction('accept'),
               onBlock: () =>
-                void confirm({ message: t.block.confirm(peer.name), confirmLabel: t.block.block(peer.name), danger: true })
-                  .then((ok) => ok && setBlocked.mutate({ userId: peer.id, blocked: true })),
+                void confirm({
+                  message: t.block.confirm(peer.name),
+                  confirmLabel: t.block.block(peer.name),
+                  danger: true,
+                }).then((ok) => ok && setBlocked.mutate({ userId: peer.id, blocked: true })),
               onDelete: () => onAction('delete'),
             }
           : undefined

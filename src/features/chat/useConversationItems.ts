@@ -6,6 +6,9 @@ import { withStatus } from '@/lib/status'
 import { useDebounced } from '@/lib/useDebounced'
 import type { Conversation, User } from '@/types/chat'
 
+/** Message search waits until you stop typing for this long. */
+const SEARCH_DEBOUNCE_MS = 300
+
 /**
  * The sidebar's contents: the chats that match the filter and search, message search
  * results (from two characters on), and the unread and request counts.
@@ -19,27 +22,29 @@ export function useConversationItems(
 ) {
   const items = useMemo<ConversationItem[]>(() => {
     const q = query.trim().toLocaleLowerCase()
-    return conversations
-      .map((c) => {
-        const peer = c.isGroup ? undefined : c.members.find((m) => m.id !== me.id)
-        const lastMessage = c.lastMessage && withStatus(c.lastMessage, me.id, c.members)
-        return {
-          conversation: c,
-          title: c.name ?? peer?.name ?? '',
-          peer,
-          lastMessage,
-          lastSender: lastMessage && users[lastMessage.senderId],
-        }
-      })
-      // Message requests live in their own tab.
-      .filter((it) => (filter === 'requests') === it.conversation.isRequest)
-      .filter((it) => filter !== 'unread' || it.conversation.unreadCount > 0 || it.conversation.markedUnread)
-      .filter((it) => filter !== 'groups' || it.conversation.isGroup)
-      .filter((it) => it.title.toLocaleLowerCase().includes(q))
+    return (
+      conversations
+        .map((c) => {
+          const peer = c.isGroup ? undefined : c.members.find((m) => m.id !== me.id)
+          const lastMessage = c.lastMessage && withStatus(c.lastMessage, me.id, c.members)
+          return {
+            conversation: c,
+            title: c.name ?? peer?.name ?? '',
+            peer,
+            lastMessage,
+            lastSender: lastMessage && users[lastMessage.senderId],
+          }
+        })
+        // Message requests live in their own tab.
+        .filter((it) => (filter === 'requests') === it.conversation.isRequest)
+        .filter((it) => filter !== 'unread' || it.conversation.unreadCount > 0 || it.conversation.markedUnread)
+        .filter((it) => filter !== 'groups' || it.conversation.isGroup)
+        .filter((it) => it.title.toLocaleLowerCase().includes(q))
+    )
   }, [conversations, me.id, users, query, filter])
 
   // Message search, alongside the chat names, once you've typed two characters.
-  const searchQuery = useDebounced(query, 300)
+  const searchQuery = useDebounced(query, SEARCH_DEBOUNCE_MS)
   const messageSearch = useMessageSearch(searchQuery)
   const messageResults = useMemo(() => {
     if (searchQuery.trim().length < 2) return undefined

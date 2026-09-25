@@ -52,7 +52,11 @@ export function LandingPage({ theme, onToggleTheme }: LandingPageProps) {
 
       <main>
         <section className="mx-auto max-w-3xl px-4 pt-10 pb-12 text-center sm:px-6 sm:pt-16">
-          <h1 className={lang === 'ar' ? 'text-title-1 text-balance' : 'text-display text-balance sm:text-[44px] sm:leading-[52px]'}>
+          <h1
+            className={
+              lang === 'ar' ? 'text-title-1 text-balance' : 'text-display text-balance sm:text-[44px] sm:leading-13'
+            }
+          >
             {t.landing.headline}
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-title-3 font-normal text-balance text-ink-muted">{t.landing.lead}</p>
@@ -60,7 +64,13 @@ export function LandingPage({ theme, onToggleTheme }: LandingPageProps) {
             <Link to={{ name: 'login' }} className={cn(buttonBase, 'bg-accent text-on-accent hover:bg-accent-strong')}>
               {t.landing.getStarted}
             </Link>
-            <a href="#features" className={cn(buttonBase, 'bg-surface-raised text-ink ring-1 ring-line-strong ring-inset hover:bg-surface-hover')}>
+            <a
+              href="#features"
+              className={cn(
+                buttonBase,
+                'bg-surface-raised text-ink ring-1 ring-line-strong ring-inset hover:bg-surface-hover',
+              )}
+            >
               {t.landing.seeFeatures}
             </a>
           </div>
@@ -77,8 +87,14 @@ export function LandingPage({ theme, onToggleTheme }: LandingPageProps) {
           />
         </div>
 
-        <section id="features" aria-labelledby="features-title" className="mx-auto max-w-6xl scroll-mt-4 px-4 py-16 sm:px-6">
-          <h2 id="features-title" className="text-center text-title-1">{t.landing.featuresTitle}</h2>
+        <section
+          id="features"
+          aria-labelledby="features-title"
+          className="mx-auto max-w-6xl scroll-mt-4 px-4 py-16 sm:px-6"
+        >
+          <h2 id="features-title" className="text-center text-title-1">
+            {t.landing.featuresTitle}
+          </h2>
           <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature) => (
               <li key={feature.title} className="rounded-3xl bg-surface p-6 shadow-xs ring-1 ring-line">
@@ -113,7 +129,10 @@ export function LandingPage({ theme, onToggleTheme }: LandingPageProps) {
 
         <section className="mx-auto max-w-3xl px-4 pb-20 text-center sm:px-6">
           <h2 className="text-title-1 text-balance">{t.landing.closingTitle}</h2>
-          <Link to={{ name: 'login' }} className={cn(buttonBase, 'mt-6 bg-accent text-on-accent hover:bg-accent-strong')}>
+          <Link
+            to={{ name: 'login' }}
+            className={cn(buttonBase, 'mt-6 bg-accent text-on-accent hover:bg-accent-strong')}
+          >
             {t.landing.getStarted}
           </Link>
         </section>

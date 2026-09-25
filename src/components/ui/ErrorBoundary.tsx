@@ -23,7 +23,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error(error, info.componentStack)
+    // Sentry gets the error in production; the details are for the developer's console.
+    if (import.meta.env.DEV) console.error(error, info.componentStack)
     reportError(error)
   }
 

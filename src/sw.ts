@@ -12,6 +12,14 @@ import { SHARE_STORAGE_KEY, type SharedItems } from './features/share/storage'
 
 declare const self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Parameters<typeof precacheAndRoute>[0] }
 
+/** For a push without its own title or icon. */
+const APP_NAME = 'Hamsa'
+const APP_ICON = '/icons/icon-192.png'
+/** The small monochrome icon in the status bar (Android). */
+const BADGE_ICON = '/icons/badge-72.png'
+/** "See other": after the shared POST, the browser loads /share with a GET. */
+const SEE_OTHER = 303
+
 // ---- The app shell ----
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
@@ -39,7 +47,7 @@ self.addEventListener('fetch', (event) => {
       const shared: SharedItems = { text, files, at: Date.now() }
       await set(SHARE_STORAGE_KEY, shared)
       // The app picks it up on /share, where you choose the chat.
-      return Response.redirect('/share', 303)
+      return Response.redirect('/share', SEE_OTHER)
     })(),
   )
 })
@@ -70,10 +78,10 @@ self.addEventListener('push', (event) => {
       if (windows.some((w) => w.visibilityState === 'visible' && w.focused)) return
 
       const text = labels()
-      await self.registration.showNotification(data.title || 'Hamsa', {
+      await self.registration.showNotification(data.title || APP_NAME, {
         body: data.body || '',
-        icon: data.icon || '/icons/icon-192.png',
-        badge: '/icons/badge-72.png',
+        icon: data.icon || APP_ICON,
+        badge: BADGE_ICON,
         tag: data.tag,
         // renotify isn't in TypeScript's NotificationOptions yet.
         ...{ renotify: Boolean(data.tag) },

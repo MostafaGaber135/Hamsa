@@ -1,17 +1,34 @@
 import {
-  useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type QueryClient,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+  type QueryClient,
 } from '@tanstack/react-query'
 import type { CachedMessage, Conversation, Message, Reaction } from '@/types/chat'
 import { privacyKeys } from '@/features/privacy/queries'
 import { conversationKeys } from '../conversations/queries'
 import {
-  PAGE_SIZE, deleteMessage, editMessage, fetchLinkPreview, fetchMessagePage, fetchPinnedMessages, fetchSavedIds,
-  insertMessage, pinMessage, reactToMessage, searchMessages, setSaved, withMediaUrls, type SavedMessage,
+  PAGE_SIZE,
+  deleteMessage,
+  editMessage,
+  fetchLinkPreview,
+  fetchMessagePage,
+  fetchPinnedMessages,
+  fetchSavedIds,
+  insertMessage,
+  pinMessage,
+  reactToMessage,
+  searchMessages,
+  setSaved,
+  withMediaUrls,
+  type SavedMessage,
 } from './api'
 
 type Pages = InfiniteData<CachedMessage[], string | undefined>
 
-export const messageKeys = {
+const messageKeys = {
   list: (conversationId: string) => ['messages', conversationId] as const,
   send: ['send-message'] as const,
   pinned: (conversationId: string) => ['pinned', conversationId] as const,
@@ -35,18 +52,21 @@ export function useMessages(conversationId: string, clearedAt?: string) {
   })
 }
 
-export function patchMessage(qc: QueryClient, conversationId: string, id: string, patch: Partial<CachedMessage>) {
-  qc.setQueryData<Pages>(messageKeys.list(conversationId), (data) =>
-    data && {
-      ...data,
-      pages: data.pages.map((page) => page.map((m) => (m.id === id ? { ...m, ...patch } : m))),
-    },
+function patchMessage(qc: QueryClient, conversationId: string, id: string, patch: Partial<CachedMessage>) {
+  qc.setQueryData<Pages>(
+    messageKeys.list(conversationId),
+    (data) =>
+      data && {
+        ...data,
+        pages: data.pages.map((page) => page.map((m) => (m.id === id ? { ...m, ...patch } : m))),
+      },
   )
 }
 
 function removeMessage(qc: QueryClient, conversationId: string, id: string) {
-  qc.setQueryData<Pages>(messageKeys.list(conversationId), (data) =>
-    data && { ...data, pages: data.pages.map((page) => page.filter((m) => m.id !== id)) },
+  qc.setQueryData<Pages>(
+    messageKeys.list(conversationId),
+    (data) => data && { ...data, pages: data.pages.map((page) => page.filter((m) => m.id !== id)) },
   )
 }
 
@@ -57,7 +77,10 @@ export function upsertMessage(qc: QueryClient, conversationId: string, message: 
     const exists = data.pages.some((page) => page.some((m) => m.id === message.id))
     if (exists) {
       // Merge, so a Realtime echo of your own message keeps its local image preview.
-      return { ...data, pages: data.pages.map((page) => page.map((m) => (m.id === message.id ? { ...m, ...message } : m))) }
+      return {
+        ...data,
+        pages: data.pages.map((page) => page.map((m) => (m.id === message.id ? { ...m, ...message } : m))),
+      }
     }
     const [newest = [], ...older] = data.pages
     return { ...data, pages: [[...newest, message], ...older] }
@@ -102,18 +125,26 @@ export function applyMessageUpdate(qc: QueryClient, message: Message) {
 }
 
 /** Someone reacted (or took their reaction back): one reaction per person. */
-export function applyReaction(qc: QueryClient, conversationId: string, messageId: string, userId: string, emoji: string | null) {
-  qc.setQueryData<Pages>(messageKeys.list(conversationId), (data) =>
-    data && {
-      ...data,
-      pages: data.pages.map((page) =>
-        page.map((m) => {
-          if (m.id !== messageId) return m
-          const others: Reaction[] = (m.reactions ?? []).filter((r) => r.userId !== userId)
-          return { ...m, reactions: emoji ? [...others, { userId, emoji }] : others }
-        }),
-      ),
-    },
+export function applyReaction(
+  qc: QueryClient,
+  conversationId: string,
+  messageId: string,
+  userId: string,
+  emoji: string | null,
+) {
+  qc.setQueryData<Pages>(
+    messageKeys.list(conversationId),
+    (data) =>
+      data && {
+        ...data,
+        pages: data.pages.map((page) =>
+          page.map((m) => {
+            if (m.id !== messageId) return m
+            const others: Reaction[] = (m.reactions ?? []).filter((r) => r.userId !== userId)
+            return { ...m, reactions: emoji ? [...others, { userId, emoji }] : others }
+          }),
+        ),
+      },
   )
 }
 
@@ -179,9 +210,9 @@ export function registerMessageMutations(qc: QueryClient) {
       patchMessage(qc, conversationId, message.id, { pending: undefined, file: undefined, progress: undefined })
       if (!message.file) return
       // Swap the local preview for the uploaded file, then free the preview's memory.
-      const [uploaded] = await withMediaUrls([
-        { ...message, ...saved, imageUrl: undefined, fileUrl: undefined },
-      ]).catch(() => [undefined])
+      const [uploaded] = await withMediaUrls([{ ...message, ...saved, imageUrl: undefined, fileUrl: undefined }]).catch(
+        () => [undefined],
+      )
       if (!uploaded) return
       patchMessage(qc, conversationId, message.id, {
         imagePath: uploaded.imagePath,
@@ -221,7 +252,8 @@ export function useMessageActions(conversationId: string, currentUserId: string)
 
   const edit = useMutation({
     mutationFn: ({ message, content }: { message: Message; content: string }) => editMessage(message.id, content),
-    onMutate: ({ message, content }) => applyMessageUpdate(qc, { ...message, content, editedAt: new Date().toISOString() }),
+    onMutate: ({ message, content }) =>
+      applyMessageUpdate(qc, { ...message, content, editedAt: new Date().toISOString() }),
     onError: refresh,
   })
 

@@ -96,10 +96,18 @@ export function Menu({ anchor, items, label, onClose, onEscape }: MenuProps) {
     const current = itemRefs.current.findIndex((el) => el === document.activeElement)
     const focus = (i: number) => itemRefs.current[(i + items.length) % items.length]?.focus()
     switch (e.key) {
-      case 'ArrowDown': focus(current + 1); break
-      case 'ArrowUp': focus(current - 1); break
-      case 'Home': focus(0); break
-      case 'End': focus(items.length - 1); break
+      case 'ArrowDown':
+        focus(current + 1)
+        break
+      case 'ArrowUp':
+        focus(current - 1)
+        break
+      case 'Home':
+        focus(0)
+        break
+      case 'End':
+        focus(items.length - 1)
+        break
       case 'Escape':
         onClose()
         onEscape?.()

@@ -60,7 +60,9 @@ export function SharePage({ conversations, me, onBack }: SharePageProps) {
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-5 md:px-5">
         <div className="mx-auto flex max-w-2xl flex-col gap-4">
           {shared === undefined ? (
-            <div className="flex justify-center py-10"><Spinner /></div>
+            <div className="flex justify-center py-10">
+              <Spinner />
+            </div>
           ) : shared === null ? (
             <p className="py-10 text-center text-body text-ink-muted">{t.share.nothing}</p>
           ) : (
@@ -69,13 +71,19 @@ export function SharePage({ conversations, me, onBack }: SharePageProps) {
                 {shared.files.map((file, i) => (
                   <p key={i} className="flex items-center gap-2 text-body text-ink">
                     <FileText size={16} strokeWidth={1.75} className="shrink-0 text-accent" aria-hidden />
-                    <span dir="auto" className="truncate">{file.name}</span>
+                    <span dir="auto" className="truncate">
+                      {file.name}
+                    </span>
                   </p>
                 ))}
                 {shared.text && (
-                  <p dir="auto" className="mt-1 line-clamp-3 text-body whitespace-pre-wrap text-ink-muted">{shared.text}</p>
+                  <p dir="auto" className="mt-1 line-clamp-3 text-body whitespace-pre-wrap text-ink-muted">
+                    {shared.text}
+                  </p>
                 )}
-                {shared.files.length > 1 && <p className="mt-2 text-caption text-ink-subtle">{t.share.firstFileOnly}</p>}
+                {shared.files.length > 1 && (
+                  <p className="mt-2 text-caption text-ink-subtle">{t.share.firstFileOnly}</p>
+                )}
               </section>
 
               <label className="flex h-10 items-center gap-2 rounded-xl bg-surface-sunken px-3">
@@ -96,7 +104,10 @@ export function SharePage({ conversations, me, onBack }: SharePageProps) {
                     <button
                       type="button"
                       onClick={() => shareTo(conversation.id)}
-                      className={cn('flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-start hover:bg-surface-hover', focusRing)}
+                      className={cn(
+                        'flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-start hover:bg-surface-hover',
+                        focusRing,
+                      )}
                     >
                       <Avatar
                         id={peer?.id ?? conversation.id}
@@ -104,7 +115,9 @@ export function SharePage({ conversations, me, onBack }: SharePageProps) {
                         src={conversation.isGroup ? conversation.avatarUrl : peer?.avatarUrl}
                         group={conversation.isGroup}
                       />
-                      <span dir="auto" className="min-w-0 flex-1 truncate text-name text-ink">{title}</span>
+                      <span dir="auto" className="min-w-0 flex-1 truncate text-name text-ink">
+                        {title}
+                      </span>
                     </button>
                   </li>
                 ))}

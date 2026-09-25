@@ -33,6 +33,8 @@ export default defineConfig(({ mode }) => {
         // public/manifest.webmanifest is the manifest.
         manifest: false,
         injectManifest: {
+          // A classic script: works in every browser with service workers (module workers don't everywhere).
+          rollupFormat: 'iife',
           globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
           // Big landing-page pictures load from the network, not the offline copy.
           globIgnores: ['screenshots/**', 'og-image.png'],

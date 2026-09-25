@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { JumpTarget } from '@/features/messages/MessageThread'
 import { navigate, useRoute } from '@/lib/router'
 
-export type ChatView = 'chat' | 'friends' | 'profile' | 'share' | 'join'
+type ChatView = 'chat' | 'friends' | 'profile' | 'share' | 'join'
 
 /**
  * What's on screen, from the URL (/c/<id>, /friends, /profile, /share, /join/<code>),
@@ -13,7 +13,9 @@ export function useChatNavigation() {
   const route = useRoute()
   const selectedId = route.name === 'chat' ? route.id : null
   const view: ChatView =
-    route.name === 'friends' || route.name === 'profile' || route.name === 'share' || route.name === 'join' ? route.name : 'chat'
+    route.name === 'friends' || route.name === 'profile' || route.name === 'share' || route.name === 'join'
+      ? route.name
+      : 'chat'
   const [detailsOpen, setDetailsOpen] = useState(false)
   // A message to scroll to once its chat is open (from search).
   const [jump, setJump] = useState<{ conversationId: string; target: JumpTarget } | null>(null)

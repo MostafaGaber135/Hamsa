@@ -18,10 +18,14 @@ type Action =
 
 async function run(action: Action) {
   switch (action.type) {
-    case 'add': return sendFriendRequest(action.user.id)
-    case 'accept': return respondToRequest(action.user.id, true)
-    case 'decline': return respondToRequest(action.user.id, false)
-    case 'remove': return removeFriendship(action.user.id)
+    case 'add':
+      return sendFriendRequest(action.user.id)
+    case 'accept':
+      return respondToRequest(action.user.id, true)
+    case 'decline':
+      return respondToRequest(action.user.id, false)
+    case 'remove':
+      return removeFriendship(action.user.id)
   }
 }
 

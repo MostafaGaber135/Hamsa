@@ -2,7 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { conversationKeys } from '@/features/conversations/queries'
 import { friendKeys } from '@/features/friends/queries'
 import {
-  fetchBlockedConversationIds, fetchBlocks, fetchPrivacySettings, setBlocked, updatePrivacySettings, type PrivacySettings,
+  fetchBlockedConversationIds,
+  fetchBlocks,
+  fetchPrivacySettings,
+  setBlocked,
+  updatePrivacySettings,
+  type PrivacySettings,
 } from './api'
 
 export const privacyKeys = {

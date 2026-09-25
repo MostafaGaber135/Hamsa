@@ -29,7 +29,17 @@ interface ConversationRowProps {
 const ICON = { size: 18, strokeWidth: 1.75 }
 
 export function ConversationRow({
-  conversation, title, peer, lastMessage, lastSender, currentUserId, selected, tabIndex, onSelect, onAction, ref,
+  conversation,
+  title,
+  peer,
+  lastMessage,
+  lastSender,
+  currentUserId,
+  selected,
+  tabIndex,
+  onSelect,
+  onAction,
+  ref,
 }: ConversationRowProps) {
   const { t, fmt, lang } = useLocale()
   const confirm = useConfirm()
@@ -52,15 +62,21 @@ export function ConversationRow({
       : { id: 'mute', label: t.menu.mute, icon: <BellOff {...ICON} />, onSelect: () => onAction('mute') },
     unread
       ? { id: 'read', label: t.menu.markRead, icon: <MailCheck {...ICON} />, onSelect: () => onAction('markRead') }
-      : { id: 'unread', label: t.menu.markUnread, icon: <MailWarning {...ICON} />, onSelect: () => onAction('markUnread') },
+      : {
+          id: 'unread',
+          label: t.menu.markUnread,
+          icon: <MailWarning {...ICON} />,
+          onSelect: () => onAction('markUnread'),
+        },
     {
       id: 'delete',
       label: t.menu.delete,
       icon: <Trash2 {...ICON} />,
       danger: true,
       onSelect: () =>
-        void confirm({ message: t.menu.deleteConfirm(title), confirmLabel: t.menu.delete, danger: true })
-          .then((ok) => ok && onAction('delete')),
+        void confirm({ message: t.menu.deleteConfirm(title), confirmLabel: t.menu.delete, danger: true }).then(
+          (ok) => ok && onAction('delete'),
+        ),
     },
   ]
   if (conversation.isGroup) {
@@ -70,8 +86,9 @@ export function ConversationRow({
       icon: <LogOut {...ICON} className="rtl:-scale-x-100" />,
       danger: true,
       onSelect: () =>
-        void confirm({ message: t.menu.leaveConfirm(title), confirmLabel: t.menu.leave, danger: true })
-          .then((ok) => ok && onAction('leave')),
+        void confirm({ message: t.menu.leaveConfirm(title), confirmLabel: t.menu.leave, danger: true }).then(
+          (ok) => ok && onAction('leave'),
+        ),
     })
   }
 
@@ -154,7 +171,9 @@ export function ConversationRow({
               }}
               className={cn(
                 '-my-1 size-7 items-center justify-center rounded-full text-ink-muted hover:bg-surface-pressed hover:text-ink',
-                menuOpen ? 'inline-flex bg-surface-pressed text-ink' : 'hidden group-hover:inline-flex group-focus-visible:inline-flex',
+                menuOpen
+                  ? 'inline-flex bg-surface-pressed text-ink'
+                  : 'hidden group-hover:inline-flex group-focus-visible:inline-flex',
               )}
             >
               <MoreHorizontal size={16} strokeWidth={1.75} aria-hidden />
@@ -181,10 +200,22 @@ export function ConversationRow({
               )}
             </span>
             {conversation.muted && (
-              <BellOff size={14} strokeWidth={1.75} className="shrink-0 text-ink-subtle" role="img" aria-label={t.menu.mute} />
+              <BellOff
+                size={14}
+                strokeWidth={1.75}
+                className="shrink-0 text-ink-subtle"
+                role="img"
+                aria-label={t.menu.mute}
+              />
             )}
             {conversation.pinned && (
-              <Pin size={14} strokeWidth={1.75} className="shrink-0 text-ink-subtle" role="img" aria-label={t.menu.pinned} />
+              <Pin
+                size={14}
+                strokeWidth={1.75}
+                className="shrink-0 text-ink-subtle"
+                role="img"
+                aria-label={t.menu.pinned}
+              />
             )}
             {conversation.unreadCount > 0 ? (
               <Badge count={conversation.unreadCount} muted={conversation.muted} />
@@ -207,4 +238,3 @@ export function ConversationRow({
     </>
   )
 }
-

@@ -1,3 +1,6 @@
+/** Profile and group photos: a square this many pixels wide (about 15 KB). */
+export const AVATAR_SIZE = 256
+
 /**
  * Resizes an image in the browser before upload, so a 5 MB phone photo becomes
  * a few hundred KB. Browsers that can't encode WebP fall back to PNG.
@@ -26,7 +29,11 @@ export async function resizeImage(file: Blob, options: { maxSide: number; square
   bitmap.close()
 
   return new Promise((resolve, reject) =>
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Could not read this image.'))), 'image/webp', 0.85),
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('Could not read this image.'))),
+      'image/webp',
+      0.85,
+    ),
   )
 }
 

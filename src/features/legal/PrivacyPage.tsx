@@ -122,6 +122,7 @@ const content: Record<'en' | 'ar', { title: string; intro: string; updated: stri
   },
 }
 
+/** The public privacy policy (/privacy), in English and Arabic; Google sign-in requires a link to it. */
 export function PrivacyPage() {
   const { t, lang, setLang } = useLocale()
   const c = content[lang]
@@ -148,7 +149,11 @@ export function PrivacyPage() {
           <p className="mt-2 text-caption text-ink-muted">
             {c.updated}: {UPDATED[lang]}
           </p>
-          <p className={lang === 'ar' ? 'mt-6 max-w-prose text-message-ar text-ink' : 'mt-6 max-w-prose text-message text-ink'}>
+          <p
+            className={
+              lang === 'ar' ? 'mt-6 max-w-prose text-message-ar text-ink' : 'mt-6 max-w-prose text-message text-ink'
+            }
+          >
             {c.intro}
           </p>
 

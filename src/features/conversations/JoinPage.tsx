@@ -35,15 +35,26 @@ export function JoinPage({ code, onBack }: { code: string; onBack: () => void })
         {invite.isPending ? (
           <Spinner />
         ) : !group ? (
-          <p className="max-w-sm text-center text-body text-ink-muted">{invite.isError ? t.loadError : t.join.invalid}</p>
+          <p className="max-w-sm text-center text-body text-ink-muted">
+            {invite.isError ? t.loadError : t.join.invalid}
+          </p>
         ) : (
           <div className="flex max-w-sm flex-col items-center gap-3 text-center">
             <Avatar id={group.conversationId} name={group.name} src={group.avatarUrl} size="xl" group />
-            <h3 dir="auto" className="mt-2 text-title-2 text-ink">{group.name}</h3>
+            <h3 dir="auto" className="mt-2 text-title-2 text-ink">
+              {group.name}
+            </h3>
             <p className="text-body text-ink-muted">{t.join.members(fmt.number(group.memberCount))}</p>
-            {group.description && <p dir="auto" className="text-body whitespace-pre-wrap text-ink">{group.description}</p>}
+            {group.description && (
+              <p dir="auto" className="text-body whitespace-pre-wrap text-ink">
+                {group.description}
+              </p>
+            )}
             {group.alreadyMember ? (
-              <Button className="mt-3" onClick={() => navigate({ name: 'chat', id: group.conversationId }, { replace: true })}>
+              <Button
+                className="mt-3"
+                onClick={() => navigate({ name: 'chat', id: group.conversationId }, { replace: true })}
+              >
                 {t.join.open}
               </Button>
             ) : (
@@ -51,7 +62,11 @@ export function JoinPage({ code, onBack }: { code: string; onBack: () => void })
                 {t.join.join}
               </Button>
             )}
-            {join.error && <p role="alert" dir="auto" className="text-caption text-danger">{join.error.message}</p>}
+            {join.error && (
+              <p role="alert" dir="auto" className="text-caption text-danger">
+                {join.error.message}
+              </p>
+            )}
           </div>
         )}
       </div>

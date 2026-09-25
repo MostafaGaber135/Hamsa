@@ -8,7 +8,7 @@ type Reporter = (error: unknown) => void
 let report: Reporter | null = null
 
 /** "/c/<uuid>?x#y" → "/c/[id]": which page, never which chat. */
-export function anonymousUrl(url: string): string {
+function anonymousUrl(url: string): string {
   try {
     const parsed = new URL(url, window.location.origin)
     return parsed.origin + parsed.pathname.replace(/\/c\/[^/]+/, '/c/[id]')

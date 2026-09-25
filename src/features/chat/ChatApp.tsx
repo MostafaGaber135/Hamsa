@@ -3,7 +3,13 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { CallOverlay } from '@/features/calls/CallOverlay'
 import { openDirectConversation } from '@/features/conversations/api'
 import { EmptyState } from '@/features/conversations/EmptyState'
-import { conversationKeys, useConversationAction, useConversations, useMarkRead, useProfile } from '@/features/conversations/queries'
+import {
+  conversationKeys,
+  useConversationAction,
+  useConversations,
+  useMarkRead,
+  useProfile,
+} from '@/features/conversations/queries'
 import { Sidebar, type Filter } from '@/features/conversations/Sidebar'
 import { useFriendships } from '@/features/friends/queries'
 import { setAppBadge } from '@/lib/appBadge'
@@ -71,8 +77,13 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
     markRead,
   })
   const { conversations, users, call } = live
-  const { items, messageResults, searchingMessages, unreadTotal, requestCount } =
-    useConversationItems(conversations, me, users, query, filter)
+  const { items, messageResults, searchingMessages, unreadTotal, requestCount } = useConversationItems(
+    conversations,
+    me,
+    users,
+    query,
+    filter,
+  )
 
   // "Message" on the friends page: open (or create) the 1:1 chat, then show it.
   const messageFriend = useMutation({
@@ -88,7 +99,8 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
   function handleConversationAction(id: string, action: ConversationAction) {
     // Close the chat if it's going away, or if you just marked it unread
     // (keeping it open would mark it read again straight away).
-    if (id === selectedId && (action === 'delete' || action === 'leave' || action === 'markUnread')) nav.closeConversation()
+    if (id === selectedId && (action === 'delete' || action === 'leave' || action === 'markUnread'))
+      nav.closeConversation()
     conversationAction.mutate({ id, action })
   }
 
@@ -122,8 +134,7 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
 
   let listPlaceholder = null
   if (conversationsQuery.isPending) listPlaceholder = <CenteredLoading label={t.loading} />
-  else if (conversationsQuery.isError)
-    listPlaceholder = <LoadError onRetry={() => conversationsQuery.refetch()} />
+  else if (conversationsQuery.isError) listPlaceholder = <LoadError onRetry={() => conversationsQuery.refetch()} />
   else if (conversations.length === 0)
     listPlaceholder = <p className="px-4 py-8 text-center text-body text-ink-muted">{t.noConversations}</p>
 
@@ -219,7 +230,9 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
             className="fixed inset-0 z-30 lg:static lg:inset-auto lg:z-auto lg:w-88 lg:shrink-0 lg:rounded-3xl lg:shadow-xs"
           />
         )}
-        {viewer && <MediaViewer items={viewer.items} startId={viewer.startId} users={users} onClose={() => setViewer(null)} />}
+        {viewer && (
+          <MediaViewer items={viewer.items} startId={viewer.startId} users={users} onClose={() => setViewer(null)} />
+        )}
 
         {/* Mounted only while open, so its code loads the first time you start a chat. */}
         {newChatOpen && (

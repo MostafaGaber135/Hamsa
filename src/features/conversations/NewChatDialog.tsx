@@ -44,7 +44,10 @@ export function NewChatDialog({ open, currentUserId, onClose, onCreated }: NewCh
   const create = useMutation({
     mutationFn: () =>
       isGroup
-        ? createGroup(groupName, selected.map((u) => u.id))
+        ? createGroup(
+            groupName,
+            selected.map((u) => u.id),
+          )
         : openDirectConversation(selected[0].id),
     onSuccess: async (conversationId) => {
       await qc.invalidateQueries({ queryKey: conversationKeys.all })
@@ -147,8 +150,12 @@ export function NewChatDialog({ open, currentUserId, onClose, onCreated }: NewCh
                     >
                       <Avatar id={user.id} name={user.name} src={user.avatarUrl} />
                       <span className="min-w-0 flex-1">
-                        <span dir="auto" className="block truncate text-name text-ink">{user.name}</span>
-                        <span dir="ltr" className="block truncate text-caption text-ink-muted rtl:text-right">@{user.username}</span>
+                        <span dir="auto" className="block truncate text-name text-ink">
+                          {user.name}
+                        </span>
+                        <span dir="ltr" className="block truncate text-caption text-ink-muted rtl:text-right">
+                          @{user.username}
+                        </span>
                       </span>
                       <span
                         aria-hidden

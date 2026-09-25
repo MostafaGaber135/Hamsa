@@ -14,7 +14,16 @@ interface TextFieldProps extends ComponentProps<'input'> {
  * Sunken field; shows its focus for mouse and keyboard alike (1.5px ring + 4px halo).
  * Password fields get an eye button to show or hide what you typed.
  */
-export function TextField({ label, hint, error, className, id, type, 'aria-describedby': describedBy, ...props }: TextFieldProps) {
+export function TextField({
+  label,
+  hint,
+  error,
+  className,
+  id,
+  type,
+  'aria-describedby': describedBy,
+  ...props
+}: TextFieldProps) {
   const { t } = useLocale()
   const autoId = useId()
   const inputId = id ?? autoId
@@ -35,7 +44,7 @@ export function TextField({ label, hint, error, className, id, type, 'aria-descr
           aria-invalid={error ? true : undefined}
           aria-describedby={cn(message && hintId, describedBy) || undefined}
           className={cn(
-            'h-11 w-full rounded-xl bg-surface-sunken px-3 text-body text-ink ring-inset outline-none placeholder:text-ink-muted',
+            'h-11 w-full rounded-xl bg-surface-sunken px-3 text-body text-ink outline-none ring-inset placeholder:text-ink-muted',
             'focus:shadow-[0_0_0_4px_var(--accent-soft)] focus:ring-[1.5px] focus:ring-focus-ring',
             'aria-invalid:ring-[1.5px] aria-invalid:ring-danger',
             'read-only:text-ink-muted read-only:focus:shadow-none read-only:focus:ring-0',
@@ -43,7 +52,7 @@ export function TextField({ label, hint, error, className, id, type, 'aria-descr
             // dir="ltr" fields (email, password) still align with the UI in Arabic.
             'rtl:text-right',
             // Room for the eye button on the end side.
-            isPassword && 'pe-11 rtl:pe-3 rtl:ps-11',
+            isPassword && 'pe-11 rtl:ps-11 rtl:pe-3',
             className,
           )}
           {...props}
@@ -62,7 +71,11 @@ export function TextField({ label, hint, error, className, id, type, 'aria-descr
               'right-1.5 rtl:right-auto rtl:left-1.5',
             )}
           >
-            {visible ? <EyeOff size={18} strokeWidth={1.75} aria-hidden /> : <Eye size={18} strokeWidth={1.75} aria-hidden />}
+            {visible ? (
+              <EyeOff size={18} strokeWidth={1.75} aria-hidden />
+            ) : (
+              <Eye size={18} strokeWidth={1.75} aria-hidden />
+            )}
           </button>
         )}
       </div>

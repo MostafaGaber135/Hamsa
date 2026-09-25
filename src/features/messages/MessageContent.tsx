@@ -8,12 +8,17 @@ import { saveFile } from './media'
 import { STICKERS, isKnownSticker, stickerUrl } from './stickers'
 
 const SPEEDS = [1, 1.5, 2] as const
+/** Waveform bars never shrink below this height (%), so quiet parts still show. */
+const MIN_BAR_HEIGHT = 14
 
 /** Only one voice note plays at a time. */
 let playing: HTMLAudioElement | null = null
 
 /** For voice notes recorded before waveforms were saved: a gentle made-up shape. */
-const FALLBACK_BARS = Array.from({ length: 48 }, (_, i) => 30 + Math.round(25 * Math.abs(Math.sin(i * 0.7)) + 15 * Math.abs(Math.sin(i * 1.9))))
+const FALLBACK_BARS = Array.from(
+  { length: 48 },
+  (_, i) => 30 + Math.round(25 * Math.abs(Math.sin(i * 0.7)) + 15 * Math.abs(Math.sin(i * 1.9))),
+)
 
 export function VoicePlayer({ message, out }: { message: Message; out: boolean }) {
   const { t, locale } = useLocale()
@@ -59,7 +64,11 @@ export function VoicePlayer({ message, out }: { message: Message; out: boolean }
           out ? 'bg-accent text-on-accent' : 'bg-accent-soft text-accent',
         )}
       >
-        {isPlaying ? <Pause size={18} fill="currentColor" aria-hidden /> : <Play size={18} fill="currentColor" className="ms-0.5" aria-hidden />}
+        {isPlaying ? (
+          <Pause size={18} fill="currentColor" aria-hidden />
+        ) : (
+          <Play size={18} fill="currentColor" className="ms-0.5" aria-hidden />
+        )}
       </button>
       <div className="min-w-0 flex-1">
         {/* The bars are the picture; an invisible range input on top does the seeking,
@@ -73,9 +82,11 @@ export function VoicePlayer({ message, out }: { message: Message; out: boolean }
                   'w-0.75 flex-1 rounded-full transition-colors duration-100',
                   (i + 0.5) / bars.length <= progress
                     ? 'bg-accent'
-                    : out ? 'bg-bubble-out-meta/45' : 'bg-ink-subtle/40',
+                    : out
+                      ? 'bg-bubble-out-meta/45'
+                      : 'bg-ink-subtle/40',
                 )}
-                style={{ height: `${Math.max(14, height)}%` }}
+                style={{ height: `${Math.max(MIN_BAR_HEIGHT, height)}%` }}
               />
             ))}
           </div>
@@ -150,11 +161,15 @@ export function FileCard({ message, out, onOpen }: { message: Message; out: bool
         >
           <FileText size={22} strokeWidth={1.75} aria-hidden />
           {extension && (
-            <span className="absolute -bottom-1 rounded bg-accent px-1 text-[9px] leading-3 font-bold text-on-accent">{extension}</span>
+            <span className="absolute -bottom-1 rounded bg-accent px-1 text-[9px] leading-3 font-bold text-on-accent">
+              {extension}
+            </span>
           )}
         </span>
         <span className="min-w-0">
-          <span dir="auto" className="block truncate text-body font-semibold">{a?.name ?? t.rich.document}</span>
+          <span dir="auto" className="block truncate text-body font-semibold">
+            {a?.name ?? t.rich.document}
+          </span>
           <span className="block text-meta opacity-75">{formatBytes(a?.size, locale)}</span>
         </span>
       </button>
@@ -171,9 +186,12 @@ export function FileCard({ message, out, onOpen }: { message: Message; out: bool
   )
 }
 
+// The location preview: four OpenStreetMap tiles around the point, linking to Google Maps.
 const TILE = 256
 const ZOOM = 15
 const BOX = { w: 256, h: 150 }
+const tileUrl = (zoom: number, x: number, y: number) => `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`
+const mapsUrl = (lat: number, lng: number) => `https://www.google.com/maps?q=${lat},${lng}`
 
 /** A small OpenStreetMap preview (4 tiles around the point) with a pin, linking to Maps. */
 export function LocationCard({ message }: { message: Message }) {
@@ -200,19 +218,22 @@ export function LocationCard({ message }: { message: Message }) {
 
   return (
     <a
-      href={`https://www.google.com/maps?q=${lat},${lng}`}
+      href={mapsUrl(lat, lng)}
       target="_blank"
       rel="noopener noreferrer"
       className="block overflow-hidden rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
       aria-label={`${t.rich.openInMaps}: ${lat.toFixed(5)}, ${lng.toFixed(5)}`}
     >
       <span className="relative block overflow-hidden bg-surface-sunken" style={{ width: BOX.w, height: BOX.h }}>
-        <span className="absolute grid grid-cols-2" style={{ left: BOX.w / 2 - px, top: BOX.h / 2 - py, width: TILE * 2 }}>
+        <span
+          className="absolute grid grid-cols-2"
+          style={{ left: BOX.w / 2 - px, top: BOX.h / 2 - py, width: TILE * 2 }}
+        >
           {[0, 1].flatMap((dy) =>
             [0, 1].map((dx) => (
               <img
                 key={`${dx}${dy}`}
-                src={`https://tile.openstreetmap.org/${ZOOM}/${tx0 + dx}/${ty0 + dy}.png`}
+                src={tileUrl(ZOOM, tx0 + dx, ty0 + dy)}
                 alt=""
                 width={TILE}
                 height={TILE}
@@ -229,7 +250,9 @@ export function LocationCard({ message }: { message: Message }) {
           style={{ left: BOX.w / 2, top: BOX.h / 2 + 4 }}
           aria-hidden
         />
-        <span className="absolute inset-e-1 bottom-0.5 rounded bg-white/80 px-1 text-[9px] text-black">© OpenStreetMap</span>
+        <span className="absolute inset-e-1 bottom-0.5 rounded bg-white/80 px-1 text-[9px] text-black">
+          © OpenStreetMap
+        </span>
       </span>
       <span className="flex items-center gap-1.5 px-2 pt-2 pb-1 text-body font-semibold">
         <MapPin size={14} strokeWidth={2} aria-hidden />

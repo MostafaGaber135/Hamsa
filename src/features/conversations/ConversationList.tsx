@@ -39,10 +39,18 @@ export function ConversationList({ items, selectedId, currentUserId, onSelect, o
     if (current < 0) return
 
     switch (e.key) {
-      case 'ArrowDown': focusRow(current + 1); break
-      case 'ArrowUp': focusRow(current - 1); break
-      case 'Home': focusRow(0); break
-      case 'End': focusRow(items.length - 1); break
+      case 'ArrowDown':
+        focusRow(current + 1)
+        break
+      case 'ArrowUp':
+        focusRow(current - 1)
+        break
+      case 'Home':
+        focusRow(0)
+        break
+      case 'End':
+        focusRow(items.length - 1)
+        break
       case 'Enter':
       case ' ':
         onSelect(items[current].conversation.id)
@@ -68,7 +76,9 @@ export function ConversationList({ items, selectedId, currentUserId, onSelect, o
       {items.map((item, i) => (
         <ConversationRow
           key={item.conversation.id}
-          ref={(el) => { rowRefs.current[i] = el }}
+          ref={(el) => {
+            rowRefs.current[i] = el
+          }}
           {...item}
           currentUserId={currentUserId}
           selected={item.conversation.id === selectedId}

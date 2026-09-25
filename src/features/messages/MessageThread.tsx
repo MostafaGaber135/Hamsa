@@ -1,5 +1,5 @@
 import { ArrowDown } from 'lucide-react'
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import type { MenuAnchor } from '@/components/ui/Menu'
@@ -50,6 +50,8 @@ const ALWAYS_RENDERED = 60
 /** Jumping to an old message loads older pages until it's found, up to this many. */
 const MAX_PAGES_FOR_JUMP = 20
 const HIGHLIGHT_MS = 2000
+/** How long a notice (e.g. "too far back") stays on screen. */
+const NOTICE_MS = 3000
 
 /** Consecutive messages from one sender on the same day form a run. */
 function runPosition(messages: Message[], i: number, sameDay: (a: string, b: string) => boolean): RunPosition {
@@ -65,8 +67,19 @@ function runPosition(messages: Message[], i: number, sameDay: (a: string, b: str
 }
 
 export function MessageThread({
-  conversation, messages, users, currentUserId, typingUsers, onRetry, onOpen, hasOlder, loadingOlder, onLoadOlder,
-  onReply, onEdit, jumpTarget,
+  conversation,
+  messages,
+  users,
+  currentUserId,
+  typingUsers,
+  onRetry,
+  onOpen,
+  hasOlder,
+  loadingOlder,
+  onLoadOlder,
+  onReply,
+  onEdit,
+  jumpTarget,
 }: MessageThreadProps) {
   const { t, fmt } = useLocale()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -95,13 +108,16 @@ export function MessageThread({
   }, [oldestId])
 
   // A new message: follow it if you were at the bottom or you sent it; otherwise count it.
-  useLayoutEffect(() => {
+  // Runs when the newest message changes, not on every render.
+  const newestId = newest?.id
+  const onNewMessage = useEffectEvent(() => {
     if (!newest) return
     if (nearBottom.current || newest.senderId === currentUserId) scrollToBottom()
     else setUnseen((n) => n + 1)
-    // Only when the newest message changes, not on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [newest?.id])
+  })
+  useLayoutEffect(() => {
+    onNewMessage()
+  }, [newestId])
 
   // The typing bubble appears at the bottom: keep it in view if you were there.
   useLayoutEffect(() => {
@@ -135,42 +151,49 @@ export function MessageThread({
   }
 
   // ---- Jumping to a message: a reply's quote, a pinned message, a search result ----
-  const [jumping, setJumping] = useState<{ id: string; pages: number } | null>(null)
-  const [highlightedId, setHighlightedId] = useState<string>()
+  // A jump loads older pages until the message turns up; each finished load counts one page.
+  const byId = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages])
+  const [jumping, setJumping] = useState<{ id: string; pages: number; waiting: boolean } | null>(null)
+  const [highlight, setHighlight] = useState<{ id: string } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [jumpTargetKey, setJumpTargetKey] = useState<number>()
 
-  const jumpTo = useCallback((id: string) => setJumping({ id, pages: 0 }), [])
+  const jumpTo = useCallback((id: string) => setJumping({ id, pages: 0, waiting: false }), [])
 
-  useEffect(() => {
-    if (jumpTarget) jumpTo(jumpTarget.id)
-  }, [jumpTarget, jumpTo])
-
-  useEffect(() => {
-    if (!jumping) return
-    const row = document.getElementById(`msg-${jumping.id}`)
-    if (row) {
-      row.scrollIntoView({ block: 'center', behavior: 'smooth' })
-      setHighlightedId(jumping.id)
-      setJumping(null)
-      const timer = window.setTimeout(() => setHighlightedId(undefined), HIGHLIGHT_MS)
-      return () => window.clearTimeout(timer)
-    }
-    // Not loaded yet: load older pages until it turns up (or there's nothing older).
-    if (hasOlder && jumping.pages < MAX_PAGES_FOR_JUMP) {
-      if (!loadingOlder) {
-        onLoadOlder?.()
-        setJumping({ ...jumping, pages: jumping.pages + 1 })
-      }
-      return
-    }
+  // Adjusted while rendering: every step follows from the messages loaded so far.
+  if (jumpTarget && jumpTarget.key !== jumpTargetKey) {
+    setJumpTargetKey(jumpTarget.key)
+    jumpTo(jumpTarget.id)
+  } else if (jumping && byId.has(jumping.id)) {
+    setJumping(null)
+    setHighlight({ id: jumping.id })
+  } else if (jumping && jumping.waiting !== Boolean(loadingOlder)) {
+    setJumping({ ...jumping, waiting: Boolean(loadingOlder), pages: loadingOlder ? jumping.pages : jumping.pages + 1 })
+  } else if (jumping && !loadingOlder && (!hasOlder || jumping.pages >= MAX_PAGES_FOR_JUMP)) {
     setJumping(null)
     setNotice(t.msg.tooFarBack)
-    const timer = window.setTimeout(() => setNotice(null), 3000)
+  }
+
+  // Not loaded yet: ask for the next older page.
+  useEffect(() => {
+    if (jumping && !loadingOlder) onLoadOlder?.()
+  }, [jumping, loadingOlder, onLoadOlder])
+
+  useEffect(() => {
+    if (!highlight) return
+    document.getElementById(`msg-${highlight.id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    const timer = window.setTimeout(() => setHighlight(null), HIGHLIGHT_MS)
     return () => window.clearTimeout(timer)
-  }, [jumping, messages, hasOlder, loadingOlder, onLoadOlder, t.msg.tooFarBack])
+  }, [highlight])
+
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(() => setNotice(null), NOTICE_MS)
+    return () => window.clearTimeout(timer)
+  }, [notice])
 
   // ---- What every bubble needs ----
-  const byId = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages])
+  const highlightedId = highlight?.id
   const usernames = useMemo(
     () => new Set(conversation.members.flatMap((m) => (m.username ? [m.username.toLowerCase()] : []))),
     [conversation.members],
@@ -245,10 +268,17 @@ export function MessageThread({
                     {/* Avatar column beside the last bubble of a received run. */}
                     {!out && (
                       <span className="w-8 shrink-0">
-                        {endsRun && sender && <Avatar id={sender.id} name={sender.name} src={sender.avatarUrl} size="sm" />}
+                        {endsRun && sender && (
+                          <Avatar id={sender.id} name={sender.name} src={sender.avatarUrl} size="sm" />
+                        )}
                       </span>
                     )}
-                    <div className={cn('flex max-w-[82%] flex-col md:max-w-[min(560px,78%)]', out ? 'items-end' : 'items-start')}>
+                    <div
+                      className={cn(
+                        'flex max-w-[82%] flex-col md:max-w-[min(560px,78%)]',
+                        out ? 'items-end' : 'items-start',
+                      )}
+                    >
                       {isGroup && !out && startsRun && sender && (
                         <span className={cn('mb-1 px-1 text-caption font-bold', senderText[tintFor(sender.id)])}>
                           {sender.name}
@@ -261,7 +291,13 @@ export function MessageThread({
                           </p>
                         }
                       >
-                        <MessageBubble message={m} direction={out ? 'out' : 'in'} position={position} onRetry={onRetry} onOpen={onOpen} />
+                        <MessageBubble
+                          message={m}
+                          direction={out ? 'out' : 'in'}
+                          position={position}
+                          onRetry={onRetry}
+                          onOpen={onOpen}
+                        />
                       </ErrorBoundary>
                     </div>
                   </div>
@@ -292,7 +328,10 @@ export function MessageThread({
         )}
 
         {notice && (
-          <p role="status" className="absolute inset-x-0 top-3 mx-auto w-fit rounded-full bg-ink px-4 py-1.5 text-caption text-canvas shadow-md">
+          <p
+            role="status"
+            className="absolute inset-x-0 top-3 mx-auto w-fit rounded-full bg-ink px-4 py-1.5 text-caption text-canvas shadow-md"
+          >
             {notice}
           </p>
         )}

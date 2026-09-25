@@ -32,14 +32,20 @@ export function ReportDialog({ user, messageId, onClose }: ReportDialogProps) {
           <Button onClick={onClose}>{t.report.close}</Button>
         ) : (
           <>
-            <Button variant="ghost" onClick={onClose}>{t.report.cancel}</Button>
-            <Button variant="danger" disabled={send.isPending} onClick={() => send.mutate()}>{t.report.send}</Button>
+            <Button variant="ghost" onClick={onClose}>
+              {t.report.cancel}
+            </Button>
+            <Button variant="danger" disabled={send.isPending} onClick={() => send.mutate()}>
+              {t.report.send}
+            </Button>
           </>
         )
       }
     >
       {send.isSuccess ? (
-        <p role="status" className="text-body text-ink">{t.report.sent}</p>
+        <p role="status" className="text-body text-ink">
+          {t.report.sent}
+        </p>
       ) : (
         <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-4">
           <fieldset>
@@ -71,7 +77,11 @@ export function ReportDialog({ user, messageId, onClose }: ReportDialogProps) {
               className="resize-none rounded-xl bg-surface-sunken px-3 py-2 font-normal ring-1 ring-line outline-none focus:ring-2 focus:ring-focus-ring"
             />
           </label>
-          {send.error && <p role="alert" dir="auto" className="text-caption text-danger">{send.error.message}</p>}
+          {send.error && (
+            <p role="alert" dir="auto" className="text-caption text-danger">
+              {send.error.message}
+            </p>
+          )}
         </form>
       )}
     </Dialog>

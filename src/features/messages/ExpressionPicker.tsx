@@ -5,11 +5,46 @@ import { useLocale } from '@/lib/i18n'
 import { STICKERS, stickerUrl } from './stickers'
 
 const EMOJIS = [
-  '😀', '😂', '🥹', '😊', '😍', '😘', '😎', '🤔',
-  '😅', '😭', '😡', '😴', '🤯', '🥳', '😬', '🙈',
-  '👍', '👎', '👏', '🙏', '💪', '🙌', '👋', '🤝',
-  '❤️', '💚', '💙', '🔥', '✨', '🎉', '💯', '⭐',
-  '✅', '❌', '👀', '☕', '🍕', '🎂', '🎁', '📌',
+  '😀',
+  '😂',
+  '🥹',
+  '😊',
+  '😍',
+  '😘',
+  '😎',
+  '🤔',
+  '😅',
+  '😭',
+  '😡',
+  '😴',
+  '🤯',
+  '🥳',
+  '😬',
+  '🙈',
+  '👍',
+  '👎',
+  '👏',
+  '🙏',
+  '💪',
+  '🙌',
+  '👋',
+  '🤝',
+  '❤️',
+  '💚',
+  '💙',
+  '🔥',
+  '✨',
+  '🎉',
+  '💯',
+  '⭐',
+  '✅',
+  '❌',
+  '👀',
+  '☕',
+  '🍕',
+  '🎂',
+  '🎁',
+  '📌',
 ]
 
 type Tab = 'emoji' | 'stickers'
@@ -76,7 +111,7 @@ export function ExpressionPicker({ onEmoji, onSticker, onClose }: ExpressionPick
       role="dialog"
       aria-label={t.composer.emojiPicker}
       onKeyDown={handleKeyDown}
-      className="absolute end-0 bottom-full z-20 mb-2 w-max max-w-[calc(100vw-1.5rem)] animate-rise rounded-2xl bg-surface-raised p-2 shadow-lg ring-1 ring-line"
+      className="absolute inset-e-0 bottom-full z-20 mb-2 w-max max-w-[calc(100vw-1.5rem)] animate-rise rounded-2xl bg-surface-raised p-2 shadow-lg ring-1 ring-line"
     >
       <div role="tablist" className="mb-2 flex gap-1">
         {(['emoji', 'stickers'] as const).map((id) => (
@@ -97,7 +132,11 @@ export function ExpressionPicker({ onEmoji, onSticker, onClose }: ExpressionPick
         ))}
       </div>
 
-      <div ref={gridRef} role="tabpanel" className={cn('grid gap-0.5', tab === 'emoji' ? 'grid-cols-8' : 'grid-cols-4 gap-1')}>
+      <div
+        ref={gridRef}
+        role="tabpanel"
+        className={cn('grid gap-0.5', tab === 'emoji' ? 'grid-cols-8' : 'grid-cols-4 gap-1')}
+      >
         {tab === 'emoji'
           ? EMOJIS.map((emoji) => (
               <button
@@ -116,7 +155,7 @@ export function ExpressionPicker({ onEmoji, onSticker, onClose }: ExpressionPick
                 type="button"
                 aria-label={t.rich.sendSticker(lang === 'ar' ? sticker.ar : sticker.en)}
                 onClick={() => onSticker(sticker.id)}
-                className="inline-flex size-[72px] items-center justify-center rounded-xl outline-none transition-transform duration-150 hover:scale-105 hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus-ring motion-reduce:hover:scale-100"
+                className="inline-flex size-18 items-center justify-center rounded-xl transition-transform duration-150 outline-none hover:scale-105 hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus-ring motion-reduce:hover:scale-100"
               >
                 <img src={stickerUrl(sticker.id)} alt="" className="size-16" draggable={false} />
               </button>

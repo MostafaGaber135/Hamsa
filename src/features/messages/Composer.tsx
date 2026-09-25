@@ -1,8 +1,29 @@
 import {
-  ArrowRight, Check, CircleAlert, FileText, Image as ImageIcon, MapPin, Mic, Paperclip, Pencil, Reply, Smile, Trash2, X,
+  ArrowRight,
+  Check,
+  CircleAlert,
+  FileText,
+  Image as ImageIcon,
+  MapPin,
+  Mic,
+  Paperclip,
+  Pencil,
+  Reply,
+  Smile,
+  Trash2,
+  X,
 } from 'lucide-react'
 import {
-  lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent,
+  lazy,
+  Suspense,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type DragEvent,
+  type KeyboardEvent,
 } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { IconButton, focusRing } from '@/components/ui/Button'
@@ -23,6 +44,8 @@ import { useVoiceRecorder } from './useVoiceRecorder'
 const ExpressionPicker = lazy(() => import('./ExpressionPicker').then((m) => ({ default: m.ExpressionPicker })))
 
 const MAX_LINES = 6
+/** Live loudness bars never shrink below this height (%), so silence still shows. */
+const MIN_LEVEL_HEIGHT = 12
 /** Photos, videos and files you can add to one send. */
 const MAX_FILES = 10
 /** "@" and the start of a username, right before the caret. */
@@ -60,7 +83,15 @@ interface ComposerProps {
 }
 
 export function Composer({
-  conversationId, recipientName, onSend, onTyping, replyTo, onCancelReply, editing, onSaveEdit, onCancelEdit,
+  conversationId,
+  recipientName,
+  onSend,
+  onTyping,
+  replyTo,
+  onCancelReply,
+  editing,
+  onSaveEdit,
+  onCancelEdit,
   mentionable = [],
 }: ComposerProps) {
   const { t, lang, dir, locale } = useLocale()
@@ -78,14 +109,20 @@ export function Composer({
   const fieldRef = useRef<HTMLTextAreaElement>(null)
   const mediaRef = useRef<HTMLInputElement>(null)
   const docRef = useRef<HTMLInputElement>(null)
-  const draftBeforeEdit = useRef('')
+  const [draftBeforeEdit, setDraftBeforeEdit] = useState('')
+  const [editingShown, setEditingShown] = useState<string>()
 
   const recorder = useVoiceRecorder((recording) =>
-    onSend({ kind: 'voice', file: recording.file, attachment: { durationMs: recording.durationMs, waveform: recording.waveform } }),
+    onSend({
+      kind: 'voice',
+      file: recording.file,
+      attachment: { durationMs: recording.durationMs, waveform: recording.waveform },
+    }),
   )
   const canSend = text.trim().length > 0 || pending.length > 0
   const shownError =
-    error ?? (recorder.error === 'blocked' ? t.rich.micBlocked : recorder.error === 'unsupported' ? t.rich.micUnsupported : null)
+    error ??
+    (recorder.error === 'blocked' ? t.rich.micBlocked : recorder.error === 'unsupported' ? t.rich.micUnsupported : null)
   // The field follows the language you type in; empty, it follows the interface.
   const textDir = textDirection(text, dir)
 
@@ -107,24 +144,28 @@ export function Composer({
     el.style.height = `${Math.min(el.scrollHeight, lineHeight * MAX_LINES)}px`
   }, [text, lang, pending])
 
-  // A shared file goes through the same checks as one you pick, once.
-  useEffect(() => {
+  // A shared file goes through the same checks as one you pick, once, on arrival.
+  const onArrival = useEffectEvent(() => {
     if (!shared) return
     takeShare(conversationId)
     if (shared.file) attach([shared.file])
-    // Only on arrival; attach is stable enough for this one-off use.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  })
+  useEffect(() => {
+    onArrival()
   }, [])
 
   // Editing: the box shows the message's text; cancelling brings your draft back.
+  // Adjusted while rendering, only when a different message starts being edited.
   const editingId = editing?.id
+  if (editingId !== editingShown) {
+    setEditingShown(editingId)
+    if (editing) {
+      setDraftBeforeEdit(getDraft(conversationId))
+      setText(editing.content ?? '')
+    }
+  }
   useEffect(() => {
-    if (!editingId) return
-    draftBeforeEdit.current = getDraft(conversationId)
-    setText(editing?.content ?? '')
-    fieldRef.current?.focus()
-    // Only when a different message starts being edited.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (editingId) fieldRef.current?.focus()
   }, [editingId])
 
   // Replying puts you straight in the box.
@@ -134,9 +175,12 @@ export function Composer({
   }, [replyId])
 
   // Free the previews' memory when they're replaced or the composer goes away.
-  useEffect(() => () => {
-    for (const p of pending) if (p.url) URL.revokeObjectURL(p.url)
-  }, [pending])
+  useEffect(
+    () => () => {
+      for (const p of pending) if (p.url) URL.revokeObjectURL(p.url)
+    },
+    [pending],
+  )
 
   function updateText(value: string) {
     setText(value)
@@ -166,7 +210,7 @@ export function Composer({
   }
 
   function stopEditing() {
-    setText(draftBeforeEdit.current)
+    setText(draftBeforeEdit)
     onCancelEdit?.()
   }
 
@@ -185,7 +229,14 @@ export function Composer({
       onSend({ kind: 'text', content, replyToId })
     } else {
       // One message per file; the text becomes the first one's caption.
-      pending.forEach((p, i) => onSend({ kind: p.kind, file: p.file, content: i === 0 ? content : undefined, replyToId: i === 0 ? replyToId : undefined }))
+      pending.forEach((p, i) =>
+        onSend({
+          kind: p.kind,
+          file: p.file,
+          content: i === 0 ? content : undefined,
+          replyToId: i === 0 ? replyToId : undefined,
+        }),
+      )
     }
     updateText('')
     setPending([])
@@ -227,7 +278,12 @@ export function Composer({
 
   async function sendRecording() {
     const result = await recorder.stop()
-    if (result) onSend({ kind: 'voice', file: result.file, attachment: { durationMs: result.durationMs, waveform: result.waveform } })
+    if (result)
+      onSend({
+        kind: 'voice',
+        file: result.file,
+        attachment: { durationMs: result.durationMs, waveform: result.waveform },
+      })
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -290,7 +346,13 @@ export function Composer({
   return (
     <div className="relative">
       {(shownError || locating) && (
-        <p role={shownError ? 'alert' : 'status'} className={cn('mb-2 flex items-center gap-2 px-2 text-caption', shownError ? 'text-danger' : 'text-ink-muted')}>
+        <p
+          role={shownError ? 'alert' : 'status'}
+          className={cn(
+            'mb-2 flex items-center gap-2 px-2 text-caption',
+            shownError ? 'text-danger' : 'text-ink-muted',
+          )}
+        >
           {locating ? <Spinner /> : <CircleAlert size={14} strokeWidth={2} aria-hidden />}
           {locating ? t.rich.gettingLocation : shownError}
           {shownError && (
@@ -325,11 +387,18 @@ export function Composer({
                   e.preventDefault()
                   insertMention(user)
                 }}
-                className={cn('flex w-full items-center gap-3 px-3 py-1.5 text-start', i === mentionIndex ? 'bg-surface-hover' : 'hover:bg-surface-hover')}
+                className={cn(
+                  'flex w-full items-center gap-3 px-3 py-1.5 text-start',
+                  i === mentionIndex ? 'bg-surface-hover' : 'hover:bg-surface-hover',
+                )}
               >
                 <Avatar id={user.id} name={user.name} src={user.avatarUrl} size="xs" />
-                <span dir="auto" className="min-w-0 truncate text-body font-semibold text-ink">{user.name}</span>
-                <span dir="ltr" className="truncate text-caption text-ink-muted">@{user.username}</span>
+                <span dir="auto" className="min-w-0 truncate text-body font-semibold text-ink">
+                  {user.name}
+                </span>
+                <span dir="ltr" className="truncate text-caption text-ink-muted">
+                  @{user.username}
+                </span>
               </button>
             </li>
           ))}
@@ -367,7 +436,11 @@ export function Composer({
                 {messagePreview(editing ?? replyTo!.message, t)}
               </span>
             </span>
-            <IconButton size="sm" label={editing ? t.msg.cancelEdit : t.msg.cancelReply} onClick={editing ? stopEditing : onCancelReply}>
+            <IconButton
+              size="sm"
+              label={editing ? t.msg.cancelEdit : t.msg.cancelReply}
+              onClick={editing ? stopEditing : onCancelReply}
+            >
               <X size={16} strokeWidth={2} />
             </IconButton>
           </div>
@@ -381,14 +454,21 @@ export function Composer({
                 {p.kind === 'image' ? (
                   <img src={p.url} alt="" className="size-20 rounded-xl object-cover ring-1 ring-line" />
                 ) : p.kind === 'video' ? (
-                  <video src={p.url} muted playsInline className="size-20 rounded-xl bg-black object-cover ring-1 ring-line" />
+                  <video
+                    src={p.url}
+                    muted
+                    playsInline
+                    className="size-20 rounded-xl bg-black object-cover ring-1 ring-line"
+                  />
                 ) : (
                   <span className="flex max-w-72 items-center gap-3 rounded-xl bg-surface-sunken py-2 ps-2 pe-4 ring-1 ring-line">
                     <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
                       <FileText size={20} strokeWidth={1.75} aria-hidden />
                     </span>
                     <span className="min-w-0">
-                      <span dir="auto" className="block truncate text-body font-semibold text-ink">{p.file.name}</span>
+                      <span dir="auto" className="block truncate text-body font-semibold text-ink">
+                        {p.file.name}
+                      </span>
                       <span className="block text-caption text-ink-muted">{formatBytes(p.file.size, locale)}</span>
                     </span>
                   </span>
@@ -414,14 +494,18 @@ export function Composer({
             <span className="flex min-w-0 flex-1 items-center gap-3 px-2 text-body text-ink">
               <span aria-hidden className="size-2.5 shrink-0 animate-pulse rounded-full bg-danger" />
               <span className="sr-only">{t.rich.recording}</span>
-              <span className="shrink-0 tabular-nums text-ink-muted">{formatDuration(recorder.elapsedMs, locale)}</span>
+              <span className="shrink-0 text-ink-muted tabular-nums">{formatDuration(recorder.elapsedMs, locale)}</span>
               {/* Live loudness: newest bar on the right, like a scrolling tape. */}
-              <span dir="ltr" aria-hidden className="flex h-8 min-w-0 flex-1 items-center justify-end gap-0.75 overflow-hidden">
+              <span
+                dir="ltr"
+                aria-hidden
+                className="flex h-8 min-w-0 flex-1 items-center justify-end gap-0.75 overflow-hidden"
+              >
                 {recorder.levels.map((level, i) => (
                   <span
                     key={i}
                     className="w-0.75 shrink-0 rounded-full bg-accent transition-[height] duration-75"
-                    style={{ height: `${Math.max(12, level * 100)}%` }}
+                    style={{ height: `${Math.max(MIN_LEVEL_HEIGHT, level * 100)}%` }}
                   />
                 ))}
               </span>
@@ -431,7 +515,10 @@ export function Composer({
               onClick={sendRecording}
               aria-label={t.rich.sendRecording}
               title={t.rich.sendRecording}
-              className={cn('inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent hover:bg-accent-strong', focusRing)}
+              className={cn(
+                'inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent hover:bg-accent-strong',
+                focusRing,
+              )}
             >
               <ArrowRight size={20} strokeWidth={2} className="rtl:-scale-x-100" aria-hidden />
             </button>
@@ -454,8 +541,18 @@ export function Composer({
                 label={t.rich.attach}
                 onClose={() => setAttachMenu(null)}
                 items={[
-                  { id: 'media', label: t.rich.photosVideos, icon: <ImageIcon {...icon} />, onSelect: () => mediaRef.current?.click() },
-                  { id: 'doc', label: t.rich.document, icon: <FileText {...icon} />, onSelect: () => docRef.current?.click() },
+                  {
+                    id: 'media',
+                    label: t.rich.photosVideos,
+                    icon: <ImageIcon {...icon} />,
+                    onSelect: () => mediaRef.current?.click(),
+                  },
+                  {
+                    id: 'doc',
+                    label: t.rich.document,
+                    icon: <FileText {...icon} />,
+                    onSelect: () => docRef.current?.click(),
+                  },
                   { id: 'location', label: t.rich.location, icon: <MapPin {...icon} />, onSelect: shareLocation },
                 ]}
               />

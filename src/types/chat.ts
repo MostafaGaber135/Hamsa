@@ -110,7 +110,7 @@ export interface Conversation {
 }
 
 export type ConversationAction =
-  | 'pin' | 'unpin' | 'mute' | 'unmute' | 'markRead' | 'markUnread' | 'delete' | 'leave' | 'accept'
+  'pin' | 'unpin' | 'mute' | 'unmute' | 'markRead' | 'markUnread' | 'delete' | 'leave' | 'accept'
 
 export type FriendStatus = 'friends' | 'incoming' | 'outgoing'
 

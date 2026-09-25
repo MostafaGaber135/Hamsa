@@ -37,7 +37,9 @@ export function Dialog({ title, closeLabel, onClose, children, footer }: DialogP
       className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-3xl bg-surface p-0 text-ink shadow-lg backdrop:bg-scrim"
     >
       <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
-        <h2 id={titleId} dir="auto" className="text-title-3">{title}</h2>
+        <h2 id={titleId} dir="auto" className="text-title-3">
+          {title}
+        </h2>
         <IconButton label={closeLabel} size="sm" onClick={() => ref.current?.close()}>
           <X size={18} strokeWidth={1.75} />
         </IconButton>

@@ -1,8 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Conversation, ConversationAction } from '@/types/chat'
 import {
-  addGroupMembers, fetchConversations, fetchProfile, markConversationRead, removeGroupMember, runConversationAction,
-  searchProfiles, setGroupDescription, setGroupInvite, setMemberRole, setWallpaper, updateGroup, uploadGroupPhoto,
+  addGroupMembers,
+  fetchConversations,
+  fetchProfile,
+  markConversationRead,
+  removeGroupMember,
+  runConversationAction,
+  searchProfiles,
+  setGroupDescription,
+  setGroupInvite,
+  setMemberRole,
+  setWallpaper,
+  updateGroup,
+  uploadGroupPhoto,
 } from './api'
 
 export const conversationKeys = {
@@ -36,7 +47,9 @@ export function useMarkRead() {
     onMutate: (conversationId) => {
       queryClient.setQueryData<Conversation[]>(conversationKeys.all, (list) =>
         list?.map((c) =>
-          c.id === conversationId ? { ...c, unreadCount: 0, markedUnread: false, lastReadAt: new Date().toISOString() } : c,
+          c.id === conversationId
+            ? { ...c, unreadCount: 0, markedUnread: false, lastReadAt: new Date().toISOString() }
+            : c,
         ),
       )
     },
@@ -44,21 +57,29 @@ export function useMarkRead() {
 }
 
 /** Pinned conversations first; otherwise keep the order the list already has. */
-export function sortPinnedFirst(list: Conversation[]) {
+function sortPinnedFirst(list: Conversation[]) {
   return [...list.filter((c) => c.pinned), ...list.filter((c) => !c.pinned)]
 }
 
 function applyAction(c: Conversation, action: ConversationAction): Conversation | null {
   switch (action) {
-    case 'pin': return { ...c, pinned: true }
-    case 'unpin': return { ...c, pinned: false }
-    case 'mute': return { ...c, muted: true }
-    case 'unmute': return { ...c, muted: false }
-    case 'markRead': return { ...c, unreadCount: 0, markedUnread: false }
-    case 'markUnread': return { ...c, markedUnread: true }
-    case 'accept': return { ...c, isRequest: false }
+    case 'pin':
+      return { ...c, pinned: true }
+    case 'unpin':
+      return { ...c, pinned: false }
+    case 'mute':
+      return { ...c, muted: true }
+    case 'unmute':
+      return { ...c, muted: false }
+    case 'markRead':
+      return { ...c, unreadCount: 0, markedUnread: false }
+    case 'markUnread':
+      return { ...c, markedUnread: true }
+    case 'accept':
+      return { ...c, isRequest: false }
     case 'delete':
-    case 'leave': return null
+    case 'leave':
+      return null
   }
 }
 
@@ -105,7 +126,12 @@ export function useGroupAdmin(conversationId: string) {
   const refresh = () => qc.invalidateQueries({ queryKey: conversationKeys.all })
 
   const update = useMutation({
-    mutationFn: async ({ name, photo, avatarUrl, description }: {
+    mutationFn: async ({
+      name,
+      photo,
+      avatarUrl,
+      description,
+    }: {
       name: string
       photo?: File
       avatarUrl: string | null
@@ -118,7 +144,10 @@ export function useGroupAdmin(conversationId: string) {
     },
     onSettled: refresh,
   })
-  const invite = useMutation({ mutationFn: (enabled: boolean) => setGroupInvite(conversationId, enabled), onSettled: refresh })
+  const invite = useMutation({
+    mutationFn: (enabled: boolean) => setGroupInvite(conversationId, enabled),
+    onSettled: refresh,
+  })
   const add = useMutation({ mutationFn: (ids: string[]) => addGroupMembers(conversationId, ids), onSettled: refresh })
   const remove = useMutation({ mutationFn: (id: string) => removeGroupMember(conversationId, id), onSettled: refresh })
   const role = useMutation({

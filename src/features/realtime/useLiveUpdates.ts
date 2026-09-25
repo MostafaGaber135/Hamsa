@@ -98,7 +98,9 @@ export function useLiveUpdates({ userId, openConversationId, onReadWhileOpen }: 
       .on('broadcast', { event: 'message' }, ({ payload }) => onMessage(payload as MessageRowLike))
       .on('broadcast', { event: 'read' }, ({ payload }) => onRead(payload as ReadEvent))
       // Edited, deleted for everyone, pinned or unpinned.
-      .on('broadcast', { event: 'message_updated' }, ({ payload }) => applyMessageUpdate(qc, toMessage(payload as MessageRowLike)))
+      .on('broadcast', { event: 'message_updated' }, ({ payload }) =>
+        applyMessageUpdate(qc, toMessage(payload as MessageRowLike)),
+      )
       .on('broadcast', { event: 'reaction' }, ({ payload }) => {
         const r = payload as ReactionEvent
         if (r.user_id !== userId) applyReaction(qc, r.conversation_id, r.message_id, r.user_id, r.emoji)

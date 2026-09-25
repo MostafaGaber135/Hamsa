@@ -126,7 +126,8 @@ export const en = {
     markUnread: 'Mark as unread',
     delete: 'Delete chat',
     leave: 'Leave group',
-    deleteConfirm: (name: string) => `Delete your chat with ${name}? Messages disappear for you only. It comes back if someone sends a new message.`,
+    deleteConfirm: (name: string) =>
+      `Delete your chat with ${name}? Messages disappear for you only. It comes back if someone sends a new message.`,
     leaveConfirm: (name: string) => `Leave ${name}? You won't get its messages anymore.`,
     pinned: 'Pinned',
     unread: 'Unread',
@@ -223,16 +224,20 @@ export const en = {
     on: 'Notifications are on for this device.',
     blocked: 'Notifications are blocked for this site. Allow them in your browser’s site settings, then come back.',
     unsupported: 'This browser doesn’t support notifications.',
-    needsInstall: 'On iPhone and iPad: tap Share → “Add to Home Screen”, open Hamsa from there, then turn notifications on.',
+    needsInstall:
+      'On iPhone and iPad: tap Share → “Add to Home Screen”, open Hamsa from there, then turn notifications on.',
     notConfigured: 'Notifications aren’t set up on this site yet.',
     muted: 'Muted chats never notify you.',
-    serviceError: 'Your browser couldn’t reach its notification service. In Brave: Settings → Privacy → turn on “Use Google services for push messaging”. Otherwise, turn off VPNs or ad-blockers for this site, restart the browser and try again.',
+    serviceError:
+      'Your browser couldn’t reach its notification service. In Brave: Settings → Privacy → turn on “Use Google services for push messaging”. Otherwise, turn off VPNs or ad-blockers for this site, restart the browser and try again.',
   },
   geo: {
     denied: 'Location is blocked for this site. Allow it from the icon next to the address bar.',
-    deviceOff: 'Your browser allows it, but your device’s location services are off. Turn them on in your system settings.',
+    deviceOff:
+      'Your browser allows it, but your device’s location services are off. Turn them on in your system settings.',
     unavailable: 'Your device couldn’t find your location. Check that location services are on, then try again.',
-    timeout: 'Your device didn’t answer with a location. On Windows, turn on Settings → Privacy & security → Location → “Let desktop apps access your location”, then try again.',
+    timeout:
+      'Your device didn’t answer with a location. On Windows, turn on Settings → Privacy & security → Location → “Let desktop apps access your location”, then try again.',
   },
   authFlow: {
     forgot: 'Forgot password?',
@@ -357,7 +362,12 @@ export const en = {
   report: {
     title: (name: string) => `Report ${name}`,
     reason: 'Why are you reporting this?',
-    reasons: { spam: 'Spam', harassment: 'Harassment or bullying', inappropriate: 'Inappropriate content', other: 'Something else' },
+    reasons: {
+      spam: 'Spam',
+      harassment: 'Harassment or bullying',
+      inappropriate: 'Inappropriate content',
+      other: 'Something else',
+    },
     details: 'Anything else we should know? (optional)',
     send: 'Send report',
     sent: 'Thanks for telling us. We’ll look into it.',
@@ -424,10 +434,22 @@ export const en = {
     features: {
       realtime: { title: 'Instant', body: 'Messages, read receipts and “typing…” arrive live, with no refresh.' },
       media: { title: 'More than text', body: 'Voice notes, photos, videos, documents, locations and stickers.' },
-      privacy: { title: 'Private by design', body: 'Only the people in a chat can read it. Hide your online status, block people, and delete your account any time.' },
-      people: { title: 'Friends and groups', body: 'Add friends, start groups, and keep strangers in a separate requests tab.' },
-      bilingual: { title: 'English and Arabic', body: 'The whole app mirrors for Arabic, and every message keeps its own direction.' },
-      app: { title: 'Install it like an app', body: 'Add Hamsa to your home screen: notifications, sharing from your gallery, and it opens offline.' },
+      privacy: {
+        title: 'Private by design',
+        body: 'Only the people in a chat can read it. Hide your online status, block people, and delete your account any time.',
+      },
+      people: {
+        title: 'Friends and groups',
+        body: 'Add friends, start groups, and keep strangers in a separate requests tab.',
+      },
+      bilingual: {
+        title: 'English and Arabic',
+        body: 'The whole app mirrors for Arabic, and every message keeps its own direction.',
+      },
+      app: {
+        title: 'Install it like an app',
+        body: 'Add Hamsa to your home screen: notifications, sharing from your gallery, and it opens offline.',
+      },
     },
   },
 }

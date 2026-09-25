@@ -58,8 +58,11 @@ export function FriendsPage({ currentUserId, onBack, onMessage, messagingUserId 
             label={`${t.friends.remove}: ${user.name}`}
             disabled={busy}
             onClick={() => {
-              void confirm({ message: t.friends.removeConfirm(user.name), confirmLabel: t.friends.remove, danger: true })
-                .then((ok) => ok && action.mutate({ type: 'remove', user }))
+              void confirm({
+                message: t.friends.removeConfirm(user.name),
+                confirmLabel: t.friends.remove,
+                danger: true,
+              }).then((ok) => ok && action.mutate({ type: 'remove', user }))
             }}
           >
             <UserMinus size={16} strokeWidth={1.75} />
@@ -70,8 +73,12 @@ export function FriendsPage({ currentUserId, onBack, onMessage, messagingUserId 
     if (status === 'incoming') {
       return (
         <>
-          <Button size="sm" disabled={busy} onClick={() => action.mutate({ type: 'accept', user })}
-            icon={<Check size={16} strokeWidth={2} aria-hidden />}>
+          <Button
+            size="sm"
+            disabled={busy}
+            onClick={() => action.mutate({ type: 'accept', user })}
+            icon={<Check size={16} strokeWidth={2} aria-hidden />}
+          >
             {t.friends.accept}
           </Button>
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => action.mutate({ type: 'decline', user })}>
@@ -82,15 +89,25 @@ export function FriendsPage({ currentUserId, onBack, onMessage, messagingUserId 
     }
     if (status === 'outgoing') {
       return (
-        <Button size="sm" variant="ghost" disabled={busy} onClick={() => action.mutate({ type: 'remove', user })}
-          icon={<X size={16} strokeWidth={1.75} aria-hidden />}>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={busy}
+          onClick={() => action.mutate({ type: 'remove', user })}
+          icon={<X size={16} strokeWidth={1.75} aria-hidden />}
+        >
           {t.friends.cancel}
         </Button>
       )
     }
     return (
-      <Button size="sm" variant="secondary" disabled={busy} onClick={() => action.mutate({ type: 'add', user })}
-        icon={<UserPlus size={16} strokeWidth={1.75} aria-hidden />}>
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled={busy}
+        onClick={() => action.mutate({ type: 'add', user })}
+        icon={<UserPlus size={16} strokeWidth={1.75} aria-hidden />}
+      >
         {t.friends.add}
       </Button>
     )
@@ -111,7 +128,11 @@ export function FriendsPage({ currentUserId, onBack, onMessage, messagingUserId 
         <h2 className={lang === 'ar' ? 'text-title-ar text-ink' : 'text-title-3 text-ink'}>{t.friends.title}</h2>
       </header>
 
-      <div role="tablist" aria-label={t.friends.title} className="mx-auto flex w-full max-w-2xl shrink-0 gap-1 px-3 pt-3 md:px-0">
+      <div
+        role="tablist"
+        aria-label={t.friends.title}
+        className="mx-auto flex w-full max-w-2xl shrink-0 gap-1 px-3 pt-3 md:px-0"
+      >
         {tabs.map((item) => (
           <button
             key={item.id}
@@ -216,7 +237,11 @@ function FindPeople({ currentUserId, actionsFor }: { currentUserId: string; acti
   )
 }
 
-function PeopleList({ people, empty, actionsFor }: {
+function PeopleList({
+  people,
+  empty,
+  actionsFor,
+}: {
   people: Friendship[]
   empty?: string
   actionsFor: (u: User) => ReactNode
@@ -238,9 +263,13 @@ function PersonRow({ user, actions }: { user: User; actions: ReactNode }) {
     <li className="flex items-center gap-3 rounded-2xl px-2 py-2.5 hover:bg-surface-hover">
       <Avatar id={user.id} name={user.name} src={user.avatarUrl} size="lg" />
       <div className="min-w-0 flex-1">
-        <p dir="auto" className={cn('truncate text-name text-ink', align)}>{user.name}</p>
+        <p dir="auto" className={cn('truncate text-name text-ink', align)}>
+          {user.name}
+        </p>
         {user.username && (
-          <p dir="ltr" className={cn('truncate text-caption text-ink-muted', align)}>@{user.username}</p>
+          <p dir="ltr" className={cn('truncate text-caption text-ink-muted', align)}>
+            @{user.username}
+          </p>
         )}
       </div>
       <div className="flex shrink-0 items-center gap-1">{actions}</div>

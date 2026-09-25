@@ -1,5 +1,6 @@
 import { cn } from '@/lib/cn'
 
+/** A small spinning ring for loading states; pair it with visible text, as it is hidden from screen readers. */
 export function Spinner({ className }: { className?: string }) {
   return (
     <span

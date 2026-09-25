@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { User } from '@/types/chat'
 
 /**
@@ -14,10 +14,12 @@ import type { User } from '@/types/chat'
 const ICE_SERVERS: RTCIceServer[] = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }]
 const RING_TIMEOUT_MS = 45_000
 const ENDED_NOTICE_MS = 2500
+/** Buzz, pause, buzz, when a call comes in (phones only). */
+const RING_VIBRATION_MS = [300, 200, 300]
 
-export type EndReason = 'ended' | 'declined' | 'noAnswer' | 'failed' | 'busy' | 'needsDevices'
+type EndReason = 'ended' | 'declined' | 'noAnswer' | 'failed' | 'busy' | 'needsDevices'
 
-export type CallState =
+type CallState =
   | { phase: 'idle' }
   | {
       phase: 'outgoing' | 'incoming' | 'connecting' | 'active'
@@ -55,8 +57,11 @@ export function useCall({ userId, peerOf, send }: Options) {
   const [muted, setMuted] = useState(false)
   const [cameraOff, setCameraOff] = useState(false)
 
+  // The latest state for callbacks and signal handlers, updated right after each render.
   const stateRef = useRef(state)
-  stateRef.current = state
+  useLayoutEffect(() => {
+    stateRef.current = state
+  }, [state])
   const pc = useRef<RTCPeerConnection | null>(null)
   const local = useRef<MediaStream | null>(null)
   // Network candidates that arrive before the other side's description is set.
@@ -90,33 +95,50 @@ export function useCall({ userId, peerOf, send }: Options) {
     [cleanup, send, userId],
   )
 
-  async function getMedia(video: boolean) {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video ? { facingMode: 'user' } : false })
+  const getMedia = useCallback(async (video: boolean) => {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: video ? { facingMode: 'user' } : false,
+    })
     local.current = stream
     setLocalStream(stream)
     return stream
-  }
+  }, [])
 
-  function connect(conversationId: string, callId: string, stream: MediaStream) {
-    const connection = new RTCPeerConnection({ iceServers: ICE_SERVERS })
-    pc.current = connection
-    stream.getTracks().forEach((track) => connection.addTrack(track, stream))
-    connection.onicecandidate = (e) => {
-      if (e.candidate) send(conversationId, { type: 'ice', callId, from: userId, candidate: e.candidate.toJSON() })
-    }
-    connection.ontrack = (e) => setRemoteStream(e.streams[0] ?? new MediaStream([e.track]))
-    connection.onconnectionstatechange = () => {
-      if (connection.connectionState === 'connected') {
-        setState((s) => (s.phase === 'connecting' ? { ...s, phase: 'active', startedAt: Date.now() } : s))
+  /** No camera or microphone (or no permission): say so, a little longer than other endings. */
+  const failNeedsDevices = useCallback(
+    (peer: User) => {
+      cleanup()
+      setState({ phase: 'ended', reason: 'needsDevices', peer })
+      endTimer.current = window.setTimeout(() => setState({ phase: 'idle' }), ENDED_NOTICE_MS * 2)
+    },
+    [cleanup],
+  )
+
+  const connect = useCallback(
+    (conversationId: string, callId: string, stream: MediaStream) => {
+      const connection = new RTCPeerConnection({ iceServers: ICE_SERVERS })
+      pc.current = connection
+      stream.getTracks().forEach((track) => connection.addTrack(track, stream))
+      connection.onicecandidate = (e) => {
+        if (e.candidate) send(conversationId, { type: 'ice', callId, from: userId, candidate: e.candidate.toJSON() })
       }
-      if (connection.connectionState === 'failed') end('failed', true)
-    }
-    return connection
-  }
+      connection.ontrack = (e) => setRemoteStream(e.streams[0] ?? new MediaStream([e.track]))
+      connection.onconnectionstatechange = () => {
+        if (connection.connectionState === 'connected') {
+          setState((s) => (s.phase === 'connecting' ? { ...s, phase: 'active', startedAt: Date.now() } : s))
+        }
+        if (connection.connectionState === 'failed') end('failed', true)
+      }
+      return connection
+    },
+    [send, userId, end],
+  )
 
-  async function flushIce() {
-    for (const candidate of pendingIce.current.splice(0)) await pc.current?.addIceCandidate(candidate).catch(() => undefined)
-  }
+  const flushIce = useCallback(async () => {
+    for (const candidate of pendingIce.current.splice(0))
+      await pc.current?.addIceCandidate(candidate).catch(() => undefined)
+  }, [])
 
   /** Calls the other person in a one-to-one conversation. */
   const start = useCallback(
@@ -128,17 +150,13 @@ export function useCall({ userId, peerOf, send }: Options) {
       try {
         await getMedia(video)
       } catch {
-        cleanup()
-        setState({ phase: 'ended', reason: 'needsDevices', peer })
-        endTimer.current = window.setTimeout(() => setState({ phase: 'idle' }), ENDED_NOTICE_MS * 2)
+        failNeedsDevices(peer)
         return
       }
       send(conversationId, { type: 'invite', callId, from: userId, video })
       ringTimer.current = window.setTimeout(() => end('noAnswer', true), RING_TIMEOUT_MS)
     },
-    // getMedia only uses refs and setters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [peerOf, send, userId, end, cleanup],
+    [peerOf, send, userId, end, getMedia, failNeedsDevices],
   )
 
   const accept = useCallback(async () => {
@@ -149,16 +167,12 @@ export function useCall({ userId, peerOf, send }: Options) {
       await getMedia(current.video)
     } catch {
       send(current.conversationId, { type: 'decline', callId: current.callId, from: userId })
-      cleanup()
-      setState({ phase: 'ended', reason: 'needsDevices', peer: current.peer })
-      endTimer.current = window.setTimeout(() => setState({ phase: 'idle' }), ENDED_NOTICE_MS * 2)
+      failNeedsDevices(current.peer)
       return
     }
     connect(current.conversationId, current.callId, local.current!)
     send(current.conversationId, { type: 'accept', callId: current.callId, from: userId })
-    // connect and getMedia only use refs and setters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [send, userId, cleanup])
+  }, [send, userId, getMedia, connect, failNeedsDevices])
 
   const decline = useCallback(() => {
     const current = stateRef.current
@@ -185,7 +199,7 @@ export function useCall({ userId, peerOf, send }: Options) {
         }
         window.clearTimeout(endTimer.current)
         setState({ phase: 'incoming', callId: signal.callId, conversationId, peer, video: signal.video })
-        navigator.vibrate?.([300, 200, 300])
+        navigator.vibrate?.(RING_VIBRATION_MS)
         return
       }
 
@@ -234,9 +248,7 @@ export function useCall({ userId, peerOf, send }: Options) {
           return
       }
     },
-    // connect and flushIce only use refs, setters and the stable callbacks listed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [userId, peerOf, send, end],
+    [userId, peerOf, send, end, connect, flushIce],
   )
 
   const toggleMute = useCallback(() => {
@@ -262,7 +274,17 @@ export function useCall({ userId, peerOf, send }: Options) {
   }, [end, cleanup])
 
   return {
-    state, localStream, remoteStream, muted, cameraOff,
-    start, accept, decline, hangUp, toggleMute, toggleCamera, handleSignal,
+    state,
+    localStream,
+    remoteStream,
+    muted,
+    cameraOff,
+    start,
+    accept,
+    decline,
+    hangUp,
+    toggleMute,
+    toggleCamera,
+    handleSignal,
   }
 }
