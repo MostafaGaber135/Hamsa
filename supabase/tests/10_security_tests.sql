@@ -7,6 +7,11 @@ insert into auth.users (id, email, raw_user_meta_data) values
  ('22222222-2222-2222-2222-222222222222','bo@x.com','{"name":"Bob Stone","avatar_url":"http://a/b.png"}'),
  ('33333333-3333-3333-3333-333333333333','eve@x.com','{}');
 select 'profiles: ' || string_agg(username || '/' || full_name, ', ' order by username) from profiles;
+-- Chats and groups are only between friends; these three are, for this file only.
+insert into friendships (requester_id, addressee_id, status) values
+ ('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222','accepted'),
+ ('11111111-1111-1111-1111-111111111111','33333333-3333-3333-3333-333333333333','accepted'),
+ ('22222222-2222-2222-2222-222222222222','33333333-3333-3333-3333-333333333333','accepted');
 
 create or replace function pg_temp.as_user(uid text) returns void language plpgsql as $$
 begin perform set_config('request.jwt.claim.sub', uid, false); end $$;
@@ -77,3 +82,6 @@ reset role; set role anon;
 do $$ begin perform public.get_my_conversations(); raise notice 'FAIL anon rpc';
 exception when insufficient_privilege then raise notice 'OK: anon cannot call RPCs'; end $$;
 do $$ begin perform count(*) from public.messages; raise notice 'anon message select ran (RLS returns 0 rows): %', (select count(*) from public.messages); end $$;
+-- The friends tests start them as strangers.
+reset role;
+delete from friendships;

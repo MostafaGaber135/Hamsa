@@ -4,7 +4,6 @@ import {
   Camera,
   Check,
   CircleAlert,
-  Copy,
   Flag,
   Link2,
   LogOut,
@@ -21,19 +20,22 @@ import {
 import { useRef, useState, type ReactNode } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button, IconButton, focusRing } from '@/components/ui/Button'
+import { CopyButton } from '@/components/ui/CopyButton'
 import { Menu, type MenuAnchor } from '@/components/ui/Menu'
 import { Spinner } from '@/components/ui/Spinner'
 import { TextField } from '@/components/ui/TextField'
 import { fetchSharedItems, type SharedTab } from '@/features/messages/api'
 import { FileCard, VoicePlayer } from '@/features/messages/MessageContent'
+import { filterPeople } from '@/features/friends/filterPeople'
+import { useFriends } from '@/features/friends/queries'
 import { BlockButton } from '@/features/privacy/BlockButton'
 import { ReportDialog } from '@/features/privacy/ReportDialog'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
-import { useDebounced } from '@/lib/useDebounced'
+import { pathFor } from '@/lib/router'
 import { DEFAULT_WALLPAPER, WALLPAPERS, wallpaperStyle } from '@/lib/wallpapers'
 import type { Conversation, ConversationAction, Member, Message, User } from '@/types/chat'
-import { useGroupAdmin, useProfileSearch, useSetWallpaper } from './queries'
+import { useGroupAdmin, useSetWallpaper } from './queries'
 
 interface ConversationDetailsProps {
   conversation: Conversation
@@ -153,21 +155,12 @@ export function ConversationDetails({
 }
 
 /** Admins: a link anyone can use to join the group; a new link stops the old one working. */
-/** How long "Copied" shows after copying the invite link. */
-const COPIED_NOTICE_MS = 2000
-
 function InviteLink({ conversation }: { conversation: Conversation }) {
   const { t } = useLocale()
   const { invite } = useGroupAdmin(conversation.id)
-  const [copied, setCopied] = useState(false)
-  const link = conversation.inviteCode ? `${window.location.origin}/join/${conversation.inviteCode}` : null
-
-  async function copy() {
-    if (!link) return
-    await navigator.clipboard?.writeText(link).catch(() => undefined)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), COPIED_NOTICE_MS)
-  }
+  const link = conversation.inviteCode
+    ? `${window.location.origin}${pathFor({ name: 'join', code: conversation.inviteCode })}`
+    : null
 
   return (
     <Section title={t.group.invite} hint={t.group.inviteHint}>
@@ -177,19 +170,7 @@ function InviteLink({ conversation }: { conversation: Conversation }) {
             {link}
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              onClick={copy}
-              icon={
-                copied ? (
-                  <Check size={14} strokeWidth={2} aria-hidden />
-                ) : (
-                  <Copy size={14} strokeWidth={1.75} aria-hidden />
-                )
-              }
-            >
-              {copied ? t.group.copied : t.group.copyLink}
-            </Button>
+            <CopyButton text={link} label={t.group.copyLink} copiedLabel={t.group.copied} />
             <Button
               size="sm"
               variant="secondary"
@@ -511,7 +492,7 @@ function Members({ conversation, me, isAdmin }: { conversation: Conversation; me
           {t.details.addPeople}
         </Button>
       )}
-      {adding && <AddPeople conversation={conversation} me={me} onAdd={(ids) => admin.add.mutate(ids)} />}
+      {adding && <AddPeople conversation={conversation} onAdd={(ids) => admin.add.mutate(ids)} />}
       {error && (
         <p role="alert" className="mb-2 text-caption text-danger" dir="auto">
           {error.message}
@@ -589,20 +570,13 @@ function Members({ conversation, me, isAdmin }: { conversation: Conversation; me
   )
 }
 
-function AddPeople({
-  conversation,
-  me,
-  onAdd,
-}: {
-  conversation: Conversation
-  me: User
-  onAdd: (ids: string[]) => void
-}) {
+/** Your friends who aren't in the group yet: only friends can be added. */
+function AddPeople({ conversation, onAdd }: { conversation: Conversation; onAdd: (ids: string[]) => void }) {
   const { t } = useLocale()
   const [query, setQuery] = useState('')
-  const debounced = useDebounced(query)
-  const search = useProfileSearch(debounced, me.id)
-  const results = (search.data ?? []).filter((u) => !conversation.memberIds.includes(u.id))
+  const friends = useFriends()
+  const addable = (friends.data ?? []).filter((u) => !conversation.memberIds.includes(u.id))
+  const results = filterPeople(addable, query)
 
   return (
     <div className="mb-3 rounded-xl bg-surface-sunken p-2">
@@ -613,12 +587,15 @@ function AddPeople({
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={t.newChatDialog.searchPeople}
-          aria-label={t.newChatDialog.searchPeople}
+          placeholder={t.newChatDialog.searchFriends}
+          aria-label={t.newChatDialog.searchFriends}
           className="min-w-0 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-ink-muted"
         />
-        {search.isFetching && <Spinner />}
+        {friends.isPending && <Spinner />}
       </label>
+      {friends.isSuccess && addable.length === 0 && (
+        <p className="px-1 py-2 text-caption text-ink-muted">{t.newChatDialog.noneToAdd}</p>
+      )}
       <ul className="mt-1">
         {results.map((u) => (
           <li key={u.id} className="flex items-center gap-2 px-1 py-1.5">

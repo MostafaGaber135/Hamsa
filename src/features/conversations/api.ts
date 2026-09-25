@@ -50,8 +50,6 @@ const MAX_WAVEFORM_BARS = 64
 const WAVEFORM_MAX = 100
 const MAX_LATITUDE = 90
 const MAX_LONGITUDE = 180
-/** People search shows at most this many matches. */
-const PEOPLE_SEARCH_LIMIT = 20
 
 // Attachments come from other people's clients, so every field is checked:
 // a wrong type is dropped instead of crashing the message that shows it.
@@ -174,30 +172,6 @@ export async function fetchProfile(userId: string): Promise<User> {
     avatarUrl: data.avatar_url,
     online: true,
   }
-}
-
-export async function searchProfiles(query: string, excludeId: string): Promise<User[]> {
-  // Characters that have meaning inside PostgREST's or() filter are removed,
-  // so a search for "a,b" can't change the shape of the query.
-  const q = query.replace(/[%*,()\\"]/g, ' ').trim()
-  if (!q) return []
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, username, full_name, avatar_url')
-    .or(`full_name.ilike.%${q}%,username.ilike.%${q}%`)
-    .neq('id', excludeId)
-    .order('full_name')
-    .limit(PEOPLE_SEARCH_LIMIT)
-  if (error) throw error
-
-  return data.map((p) => ({
-    id: p.id,
-    name: p.full_name,
-    username: p.username,
-    avatarUrl: p.avatar_url,
-    online: false,
-  }))
 }
 
 // ---------- mutations ----------

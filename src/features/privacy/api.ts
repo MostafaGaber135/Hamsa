@@ -1,9 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import type { User } from '@/types/chat'
 
-/** Who may put you in a group: anyone, or only your friends. */
-type GroupInvites = 'everyone' | 'friends'
-
 /** The people you blocked. */
 export async function fetchBlocks(): Promise<User[]> {
   const { data, error } = await supabase.rpc('get_my_blocks')
@@ -35,27 +32,18 @@ export async function setBlocked(userId: string, blocked: boolean) {
 type PresenceVisibility = 'contacts' | 'nobody'
 
 export interface PrivacySettings {
-  groupInvites: GroupInvites
   presence: PresenceVisibility
 }
 
 export async function fetchPrivacySettings(userId: string): Promise<PrivacySettings> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('group_invites, presence_visibility')
-    .eq('id', userId)
-    .single()
+  const { data, error } = await supabase.from('profiles').select('presence_visibility').eq('id', userId).single()
   if (error) throw error
   return {
-    groupInvites: data.group_invites === 'friends' ? 'friends' : 'everyone',
     presence: data.presence_visibility === 'nobody' ? 'nobody' : 'contacts',
   }
 }
 
 export async function updatePrivacySettings(userId: string, changes: Partial<PrivacySettings>) {
-  const { error } = await supabase
-    .from('profiles')
-    .update({ group_invites: changes.groupInvites, presence_visibility: changes.presence })
-    .eq('id', userId)
+  const { error } = await supabase.from('profiles').update({ presence_visibility: changes.presence }).eq('id', userId)
   if (error) throw error
 }

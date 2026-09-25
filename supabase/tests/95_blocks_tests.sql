@@ -50,11 +50,8 @@ insert into messages (conversation_id, content) values (:'direct', 'hello again'
 select 'after unblock alice can write: ok';
 select 'no blocked chats left for alice: ' || count(*) from get_blocked_conversations();
 
--- Eve only lets friends add her to groups.
+-- Only friends can add eve to groups.
 select unblock_user('33333333-3333-3333-3333-333333333333');
-select pg_temp.as_user('33333333-3333-3333-3333-333333333333');
-update profiles set group_invites = 'friends' where id = '33333333-3333-3333-3333-333333333333';
-select pg_temp.as_user('11111111-1111-1111-1111-111111111111');
 select pg_temp.refused('a stranger adding eve to a group', $$select public.create_group_conversation('Strangers', array['33333333-3333-3333-3333-333333333333']::uuid[])$$);
 select send_friend_request('33333333-3333-3333-3333-333333333333');
 select pg_temp.as_user('33333333-3333-3333-3333-333333333333');

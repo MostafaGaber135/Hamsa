@@ -71,6 +71,12 @@ function removeMessage(qc: QueryClient, conversationId: string, id: string) {
 }
 
 /** Adds the message to the newest page, or updates it in place if it's already there (a retry or an echo). */
+function hasMessage(qc: QueryClient, conversationId: string, id: string) {
+  return Boolean(
+    qc.getQueryData<Pages>(messageKeys.list(conversationId))?.pages.some((page) => page.some((m) => m.id === id)),
+  )
+}
+
 export function upsertMessage(qc: QueryClient, conversationId: string, message: CachedMessage) {
   qc.setQueryData<Pages>(messageKeys.list(conversationId), (data) => {
     if (!data) return data
@@ -199,7 +205,10 @@ export function registerMessageMutations(qc: QueryClient) {
 
     // Runs before the request: the message shows up instantly as "sending".
     onMutate: async (message: CachedMessage) => {
-      await qc.cancelQueries({ queryKey: messageKeys.list(message.conversationId) })
+      // A refetch in flight could overwrite the new message, so it's cancelled. Not a first
+      // load, though: cancelling that would leave the chat loading forever.
+      const key = messageKeys.list(message.conversationId)
+      if (qc.getQueryData(key)) await qc.cancelQueries({ queryKey: key })
       const optimistic = { ...message, pending: 'sending' as const, progress: message.file ? 0 : undefined }
       upsertMessage(qc, message.conversationId, optimistic)
       bumpConversation(qc, optimistic)
@@ -208,6 +217,9 @@ export function registerMessageMutations(qc: QueryClient) {
     onSuccess: async (saved: SavedMessage, message: CachedMessage) => {
       const { conversationId } = message
       patchMessage(qc, conversationId, message.id, { pending: undefined, file: undefined, progress: undefined })
+      // Sent before the chat's first load finished, which may have missed it: load it again.
+      if (!hasMessage(qc, conversationId, message.id))
+        void qc.invalidateQueries({ queryKey: messageKeys.list(conversationId) })
       if (!message.file) return
       // Swap the local preview for the uploaded file, then free the preview's memory.
       const [uploaded] = await withMediaUrls([{ ...message, ...saved, imageUrl: undefined, fileUrl: undefined }]).catch(

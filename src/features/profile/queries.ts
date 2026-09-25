@@ -52,13 +52,16 @@ export function useChangePassword() {
   return useMutation({ mutationFn: changePassword })
 }
 
+/** An answer about a username is trusted this long before asking again. */
+const USERNAME_CHECK_STALE_MS = 10_000
+
 /** Checks the username only when it differs from yours and has a valid shape. */
-export function useUsernameAvailability(username: string, current: string, userId: string) {
+export function useUsernameAvailability(username: string, current: string) {
   const shouldCheck = username !== current && USERNAME_PATTERN.test(username)
   return useQuery({
     queryKey: ['username-available', username],
-    queryFn: () => isUsernameAvailable(username, userId),
+    queryFn: () => isUsernameAvailable(username),
     enabled: shouldCheck,
-    staleTime: 10_000,
+    staleTime: USERNAME_CHECK_STALE_MS,
   })
 }

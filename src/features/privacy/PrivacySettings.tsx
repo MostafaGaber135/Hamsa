@@ -5,7 +5,7 @@ import { useLocale } from '@/lib/i18n'
 import type { PrivacySettings as Settings } from './api'
 import { useBlockedUsers, usePrivacySettings, useSetBlocked, useUpdatePrivacySettings } from './queries'
 
-/** The profile page's privacy section: online status, group invites, and who you blocked. */
+/** The profile page's privacy section: online status, and who you blocked. */
 export function PrivacySettings({ userId }: { userId: string }) {
   const { t } = useLocale()
   const settings = usePrivacySettings(userId)
@@ -22,16 +22,6 @@ export function PrivacySettings({ userId }: { userId: string }) {
           { value: 'nobody', label: t.privacySettings.presenceNobody },
         ]}
         onChange={(presence) => update.mutate({ presence })}
-      />
-      <Choice
-        name="group-invites"
-        legend={t.privacySettings.groupInvites}
-        value={settings.data?.groupInvites}
-        options={[
-          { value: 'everyone', label: t.privacySettings.everyone },
-          { value: 'friends', label: t.privacySettings.friendsOnly },
-        ]}
-        onChange={(groupInvites) => update.mutate({ groupInvites })}
       />
       {settings.isError && <ErrorText>{t.loadError}</ErrorText>}
       {update.error && <ErrorText>{update.error.message}</ErrorText>}

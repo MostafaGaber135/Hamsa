@@ -33,6 +33,10 @@ select 'alice wallpaper: ' || coalesce(wallpaper, 'default') from get_my_convers
 select create_group_conversation('Book club', array['22222222-2222-2222-2222-222222222222']::uuid[]) as grp \gset
 select update_group(:'grp', 'Book Club 📚', 'https://x/avatars/groups/g.webp');
 select 'renamed: ' || name || ' photo: ' || (avatar_url is not null) || ' my role: ' || my_role from get_my_conversations() where id = :'grp';
+reset role;
+insert into friendships (requester_id, addressee_id, status)
+values ('11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', 'accepted');
+set role authenticated;
 select add_group_members(:'grp', array['33333333-3333-3333-3333-333333333333']::uuid[]);
 select 'members now: ' || jsonb_array_length(members) from get_my_conversations() where id = :'grp';
 insert into storage.objects (bucket_id, name) values ('avatars', 'groups/' || :'grp' || '/p.webp');

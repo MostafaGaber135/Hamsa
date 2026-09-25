@@ -14,6 +14,7 @@ describe('parseRoute', () => {
     expect(parseRoute('/login')).toEqual({ name: 'login' })
     expect(parseRoute('/privacy')).toEqual({ name: 'privacy' })
     expect(parseRoute(`/join/${code}`)).toEqual({ name: 'join', code })
+    expect(parseRoute('/add/Ameera_1')).toEqual({ name: 'add', username: 'ameera_1' })
   })
 
   it('lower-cases ids and codes', () => {
@@ -23,6 +24,8 @@ describe('parseRoute', () => {
   it('sends anything it does not recognise home', () => {
     expect(parseRoute('/c/not-a-uuid')).toEqual({ name: 'home' })
     expect(parseRoute('/join/short')).toEqual({ name: 'home' })
+    expect(parseRoute('/add/no')).toEqual({ name: 'home' })
+    expect(parseRoute('/add/not-a-username')).toEqual({ name: 'home' })
     expect(parseRoute('/nowhere')).toEqual({ name: 'home' })
   })
 })
@@ -38,6 +41,7 @@ describe('pathFor', () => {
       { name: 'login' },
       { name: 'privacy' },
       { name: 'join', code },
+      { name: 'add', username: 'ameera_1' },
     ]
     for (const route of routes) expect(parseRoute(pathFor(route))).toEqual(route)
   })

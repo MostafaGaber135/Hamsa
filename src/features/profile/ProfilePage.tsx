@@ -147,7 +147,7 @@ function DetailsCard({ user, email, saved, onSaved }: DetailsCardProps) {
   const [username, setUsername] = useState(user.username ?? '')
 
   const debouncedUsername = useDebounced(username, USERNAME_CHECK_DELAY_MS)
-  const availability = useUsernameAvailability(debouncedUsername, user.username ?? '', user.id)
+  const availability = useUsernameAvailability(debouncedUsername, user.username ?? '')
 
   const changed = fullName.trim() !== user.name || username !== user.username
   const validShape = USERNAME_PATTERN.test(username)

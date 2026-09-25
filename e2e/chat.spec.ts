@@ -16,27 +16,40 @@ async function signUp(browser: Browser, name: string) {
   return page
 }
 
-test('a message arrives live in the other browser, and the reply comes back', async ({ browser }) => {
+test('friends through an invite link, then a message arrives live and the reply comes back', async ({ browser }) => {
   const aliceName = `Alice ${run}`
   const bobName = `Bob ${run}`
   const alice = await signUp(browser, aliceName)
   const bob = await signUp(browser, bobName)
 
-  // Alice starts a chat with Bob and writes.
+  // Bob copies his invite link from the friends page.
+  await bob.getByRole('button', { name: 'Friends' }).first().click()
+  await bob.getByRole('tab', { name: 'Find people' }).click()
+  const inviteLink = (await bob.getByText(/\/add\/[a-z0-9_]+$/).textContent()) ?? ''
+
+  // Alice opens it and sends him a request; Bob accepts.
+  await alice.goto(new URL(inviteLink).pathname)
+  await alice.getByRole('button', { name: 'Add friend' }).click()
+  await bob.getByRole('tab', { name: /Requests/ }).click()
+  await bob.getByRole('button', { name: 'Accept' }).click()
+
+  // Friends now: Alice starts a chat with Bob and writes.
   await alice.getByRole('button', { name: 'New chat' }).first().click()
-  await alice.getByLabel('Search by name or username').fill(bobName)
-  await alice.getByRole('button', { name: new RegExp(bobName) }).click()
+  await alice.getByLabel('Search your friends').fill(bobName)
+  await alice
+    .getByRole('dialog')
+    .getByRole('button', { name: new RegExp(bobName) })
+    .click()
   await alice.getByRole('button', { name: 'Start chat' }).click()
   const aliceBox = alice.getByRole('textbox', { name: `Message ${bobName}` })
   await aliceBox.fill('Hello from Alice')
   await aliceBox.press('Enter')
 
-  // Bob isn't Alice's friend, so it arrives as a message request, live.
-  await bob.getByRole('button', { name: /Requests/ }).click()
+  // It arrives in Bob's chat list, live.
   await bob.getByRole('option', { name: new RegExp(aliceName) }).click()
   await expect(bob.getByRole('log').getByText('Hello from Alice')).toBeVisible()
 
-  // Bob replies (which accepts the request), and Alice sees it without reloading.
+  // Bob replies, and Alice sees it without reloading.
   const bobBox = bob.getByRole('textbox', { name: `Message ${aliceName}` })
   await bobBox.fill('Hi Alice')
   await bobBox.press('Enter')

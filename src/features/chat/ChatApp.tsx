@@ -186,7 +186,10 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
             <JoinPage code={route.code} onBack={goBack} />
           ) : view === 'friends' ? (
             <FriendsPage
-              currentUserId={me.id}
+              // A new invite link starts a fresh search.
+              key={route.name === 'add' ? route.username : 'friends'}
+              myUsername={me.username}
+              inviteUsername={route.name === 'add' ? route.username : undefined}
               onBack={goBack}
               onMessage={(user) => messageFriend.mutate(user)}
               messagingUserId={messageFriend.isPending ? messageFriend.variables?.id : null}
@@ -238,7 +241,6 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
         {newChatOpen && (
           <NewChatDialog
             open
-            currentUserId={me.id}
             onClose={() => setNewChatOpen(false)}
             onCreated={(id) => {
               setNewChatOpen(false)

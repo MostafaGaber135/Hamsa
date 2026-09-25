@@ -1,27 +1,28 @@
-import { ArrowLeft, Check, CircleAlert, MessageCircle, Search, UserMinus, UserPlus, X } from 'lucide-react'
+import { ArrowLeft, Check, CircleAlert, MessageCircle, UserMinus, UserPlus, X } from 'lucide-react'
 import { useConfirm } from '@/components/ui/confirm'
 import { useState, type ReactNode } from 'react'
-import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button, IconButton, focusRing } from '@/components/ui/Button'
-import { Spinner } from '@/components/ui/Spinner'
-import { useProfileSearch } from '@/features/conversations/queries'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
-import { useDebounced } from '@/lib/useDebounced'
-import type { Friendship, FriendStatus, User } from '@/types/chat'
+import type { FriendStatus, User } from '@/types/chat'
+import { FindPeople } from './FindPeople'
+import { Empty, Loading, PeopleList, Section } from './PeopleList'
 import { useFriendAction, useFriendships } from './queries'
 
 type Tab = 'friends' | 'requests' | 'find'
 
 interface FriendsPageProps {
-  currentUserId: string
+  /** Your username, for your invite link. */
+  myUsername?: string
+  /** Opened from someone's invite link (/add/<username>): find them. */
+  inviteUsername?: string
   onBack: () => void
   onMessage: (user: User) => void
   messagingUserId?: string | null
 }
 
-export function FriendsPage({ currentUserId, onBack, onMessage, messagingUserId }: FriendsPageProps) {
+export function FriendsPage({ myUsername, inviteUsername, onBack, onMessage, messagingUserId }: FriendsPageProps) {
   const { t, lang } = useLocale()
   const confirm = useConfirm()
   const friendships = useFriendships()
@@ -31,8 +32,8 @@ export function FriendsPage({ currentUserId, onBack, onMessage, messagingUserId 
   const incoming = list.filter((f) => f.status === 'incoming')
   const outgoing = list.filter((f) => f.status === 'outgoing')
 
-  // Open on the requests tab when someone is waiting for an answer.
-  const [tab, setTab] = useState<Tab>(() => (incoming.length > 0 ? 'requests' : 'friends'))
+  // An invite link opens the search; otherwise the requests tab when someone is waiting for an answer.
+  const [tab, setTab] = useState<Tab>(() => (inviteUsername ? 'find' : incoming.length > 0 ? 'requests' : 'friends'))
 
   const statusOf = (userId: string): FriendStatus | undefined => list.find((f) => f.user.id === userId)?.status
 
@@ -190,111 +191,10 @@ export function FriendsPage({ currentUserId, onBack, onMessage, messagingUserId 
               </div>
             )
           ) : (
-            <FindPeople currentUserId={currentUserId} actionsFor={actionsFor} />
+            <FindPeople actionsFor={actionsFor} myUsername={myUsername} initialQuery={inviteUsername} />
           )}
         </div>
       </div>
     </>
-  )
-}
-
-function FindPeople({ currentUserId, actionsFor }: { currentUserId: string; actionsFor: (u: User) => ReactNode }) {
-  const { t } = useLocale()
-  const [query, setQuery] = useState('')
-  const debounced = useDebounced(query)
-  const search = useProfileSearch(debounced, currentUserId)
-
-  return (
-    <>
-      <label className="flex h-11 items-center gap-2 rounded-xl bg-surface-sunken px-3 ring-inset has-[input:focus]:shadow-[0_0_0_4px_var(--accent-soft)] has-[input:focus]:ring-[1.5px] has-[input:focus]:ring-focus-ring">
-        <Search size={18} strokeWidth={1.75} className="shrink-0 text-ink-muted" aria-hidden />
-        <input
-          autoFocus
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t.friends.search}
-          aria-label={t.friends.search}
-          className="min-w-0 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-ink-muted"
-        />
-        {search.isFetching && <Spinner />}
-      </label>
-
-      <div className="mt-4">
-        {!debounced.trim() ? (
-          <Empty text={t.friends.typeToSearch} />
-        ) : search.data?.length === 0 ? (
-          <Empty text={t.friends.noResults} />
-        ) : (
-          <ul className="flex flex-col gap-0.5">
-            {search.data?.map((user) => (
-              <PersonRow key={user.id} user={user} actions={actionsFor(user)} />
-            ))}
-          </ul>
-        )}
-      </div>
-    </>
-  )
-}
-
-function PeopleList({
-  people,
-  empty,
-  actionsFor,
-}: {
-  people: Friendship[]
-  empty?: string
-  actionsFor: (u: User) => ReactNode
-}) {
-  if (people.length === 0 && empty) return <Empty text={empty} />
-  return (
-    <ul className="flex flex-col gap-0.5">
-      {people.map((f) => (
-        <PersonRow key={f.user.id} user={f.user} actions={actionsFor(f.user)} />
-      ))}
-    </ul>
-  )
-}
-
-function PersonRow({ user, actions }: { user: User; actions: ReactNode }) {
-  const { lang } = useLocale()
-  const align = lang === 'ar' ? 'text-right' : 'text-left'
-  return (
-    <li className="flex items-center gap-3 rounded-2xl px-2 py-2.5 hover:bg-surface-hover">
-      <Avatar id={user.id} name={user.name} src={user.avatarUrl} size="lg" />
-      <div className="min-w-0 flex-1">
-        <p dir="auto" className={cn('truncate text-name text-ink', align)}>
-          {user.name}
-        </p>
-        {user.username && (
-          <p dir="ltr" className={cn('truncate text-caption text-ink-muted', align)}>
-            @{user.username}
-          </p>
-        )}
-      </div>
-      <div className="flex shrink-0 items-center gap-1">{actions}</div>
-    </li>
-  )
-}
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section>
-      <h3 className="mb-2 px-2 text-caption font-bold text-ink-muted">{title}</h3>
-      {children}
-    </section>
-  )
-}
-
-function Empty({ text }: { text: string }) {
-  return <p className="px-2 py-10 text-center text-body text-ink-muted">{text}</p>
-}
-
-function Loading({ label }: { label: string }) {
-  return (
-    <div role="status" className="flex items-center justify-center gap-2 py-10 text-body text-ink-muted">
-      <Spinner />
-      {label}
-    </div>
   )
 }

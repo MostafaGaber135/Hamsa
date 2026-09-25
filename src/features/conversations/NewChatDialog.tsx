@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Check, CircleAlert, Search, X } from 'lucide-react'
+import { Check, CircleAlert, Search, UserPlus, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button, IconButton } from '@/components/ui/Button'
@@ -7,31 +7,33 @@ import { Spinner } from '@/components/ui/Spinner'
 import { TextField } from '@/components/ui/TextField'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
-import { useDebounced } from '@/lib/useDebounced'
+import { navigate } from '@/lib/router'
+import { filterPeople } from '@/features/friends/filterPeople'
+import { useFriends } from '@/features/friends/queries'
 import type { User } from '@/types/chat'
 import { createGroup, openDirectConversation } from './api'
-import { conversationKeys, useProfileSearch } from './queries'
+import { conversationKeys } from './queries'
 
 interface NewChatDialogProps {
   open: boolean
-  currentUserId: string
   onClose: () => void
   onCreated: (conversationId: string) => void
 }
 
 /**
- * Pick one person for a 1:1 chat, or several (plus a name) for a group.
+ * Pick one friend for a 1:1 chat, or several (plus a name) for a group. Only friends are
+ * listed: anyone else is added on the friends page first.
  * Uses the native <dialog>: focus is trapped, Esc closes, and the page behind is inert.
  */
-export function NewChatDialog({ open, currentUserId, onClose, onCreated }: NewChatDialogProps) {
+export function NewChatDialog({ open, onClose, onCreated }: NewChatDialogProps) {
   const { t, lang } = useLocale()
   const dialogRef = useRef<HTMLDialogElement>(null)
   const qc = useQueryClient()
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<User[]>([])
   const [groupName, setGroupName] = useState('')
-  const debounced = useDebounced(query)
-  const search = useProfileSearch(debounced, currentUserId)
+  const friends = useFriends()
+  const shown = filterPeople(friends.data ?? [], query)
   const isGroup = selected.length > 1
 
   useEffect(() => {
@@ -100,11 +102,10 @@ export function NewChatDialog({ open, currentUserId, onClose, onCreated }: NewCh
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={t.newChatDialog.searchPeople}
-              aria-label={t.newChatDialog.searchPeople}
+              placeholder={t.newChatDialog.searchFriends}
+              aria-label={t.newChatDialog.searchFriends}
               className="min-w-0 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-ink-muted"
             />
-            {search.isFetching && <Spinner />}
           </label>
 
           {selected.length > 0 && (
@@ -128,13 +129,31 @@ export function NewChatDialog({ open, currentUserId, onClose, onCreated }: NewCh
         </div>
 
         <div className="mt-3 min-h-40 flex-1 overflow-y-auto px-3">
-          {!debounced.trim() ? (
-            <p className="px-2 py-6 text-center text-body text-ink-muted">{t.newChatDialog.typeToSearch}</p>
-          ) : search.data?.length === 0 ? (
+          {friends.isPending ? (
+            <div role="status" className="flex justify-center py-6">
+              <Spinner />
+            </div>
+          ) : friends.isError ? (
+            <p className="px-2 py-6 text-center text-body text-ink-muted">{t.loadError}</p>
+          ) : friends.data.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 px-2 py-6 text-center">
+              <p className="text-body text-ink-muted">{t.newChatDialog.noFriends}</p>
+              <Button
+                variant="secondary"
+                icon={<UserPlus size={16} strokeWidth={1.75} aria-hidden />}
+                onClick={() => {
+                  dialogRef.current?.close()
+                  navigate({ name: 'friends' })
+                }}
+              >
+                {t.newChatDialog.findFriends}
+              </Button>
+            </div>
+          ) : shown.length === 0 ? (
             <p className="px-2 py-6 text-center text-body text-ink-muted">{t.newChatDialog.noPeople}</p>
           ) : (
             <ul className="flex flex-col gap-0.5">
-              {search.data?.map((user) => {
+              {shown.map((user) => {
                 const isSelected = selected.some((u) => u.id === user.id)
                 return (
                   <li key={user.id}>

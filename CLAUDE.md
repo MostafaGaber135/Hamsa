@@ -14,6 +14,9 @@ A real-time chat app: React 19 + TypeScript + Vite + Tailwind v4 + TanStack Quer
 - No `eslint-disable`: use `useEffectEvent`, stable `useCallback`s, or adjust state while rendering.
 - Database changes: a new file in `supabase/migrations/`, then `npm run db:schema` and `npm run db:types`,
   and SQL tests in `supabase/tests/`. Never edit `schema.sql` or `database.generated.ts` by hand.
+- Friends only: new one-to-one chats and group members must be friends (enforced in SQL). Profiles are readable
+  only by people connected to them; finding people goes through `search_people` (3+ characters, start of a
+  username), `people_you_may_know`, or an invite link `/add/<username>`. Never add a query that lists profiles.
 - Edge Functions share `supabase/functions/_shared/` (`requireEnv`, `admin`, `cors`, action tokens) and are
   deployed with `npm run functions:deploy`.
 
