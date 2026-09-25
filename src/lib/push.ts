@@ -13,12 +13,6 @@ export type PushStatus =
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true
 
-export function registerServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => undefined)
-  }
-}
-
 async function currentSubscription() {
   const registration = await navigator.serviceWorker.ready
   return registration.pushManager.getSubscription()

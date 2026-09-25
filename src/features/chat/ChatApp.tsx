@@ -17,6 +17,7 @@ import { useConversationChannels } from '@/features/realtime/useConversationChan
 import { useLastSeenHeartbeat } from '@/features/realtime/useLastSeen'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
+import { goBack, navigate, useRoute } from '@/lib/router'
 import { withStatus } from '@/lib/status'
 import { detachPush, resyncPush } from '@/lib/push'
 import { supabase } from '@/lib/supabase'
@@ -33,6 +34,7 @@ const NewChatDialog = lazy(() =>
 const FriendsPage = lazy(() => import('@/features/friends/FriendsPage').then((m) => ({ default: m.FriendsPage })))
 const ProfilePage = lazy(() => import('@/features/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })))
 const MediaViewer = lazy(() => import('@/features/messages/MediaViewer').then((m) => ({ default: m.MediaViewer })))
+const SharePage = lazy(() => import('@/features/share/SharePage').then((m) => ({ default: m.SharePage })))
 
 interface ChatAppProps {
   userId: string
@@ -47,14 +49,13 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
   const conversationsQuery = useConversations()
   const profileQuery = useProfile(userId)
   const markRead = useMarkRead()
-  const [selectedId, setSelectedId] = useState<string | null>(
-    // Opened from a notification in a new tab: ?c=<conversation id>
-    () => new URLSearchParams(window.location.search).get('c'),
-  )
+  // The URL decides what's on screen: /c/<id>, /friends, /profile, /share, or the list.
+  const route = useRoute()
+  const selectedId = route.name === 'chat' ? route.id : null
+  const view = route.name === 'friends' || route.name === 'profile' || route.name === 'share' ? route.name : 'chat'
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [newChatOpen, setNewChatOpen] = useState(false)
-  const [view, setView] = useState<'chat' | 'friends' | 'profile'>('chat')
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [viewer, setViewer] = useState<{ items: Message[]; startId: string } | null>(null)
   const friendships = useFriendships()
@@ -66,8 +67,7 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
     mutationFn: (user: User) => openDirectConversation(user.id),
     onSuccess: async (conversationId) => {
       await qc.invalidateQueries({ queryKey: conversationKeys.all })
-      setSelectedId(conversationId)
-      setView('chat')
+      navigate({ name: 'chat', id: conversationId })
     },
   })
 
@@ -77,15 +77,15 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
     // Close the chat if it's going away, or if you just marked it unread
     // (keeping it open would mark it read again straight away).
     if (id === selectedId && (action === 'delete' || action === 'leave' || action === 'markUnread')) {
-      setSelectedId(null)
+      navigate({ name: 'home' }, { replace: true })
     }
     conversationAction.mutate({ id, action })
   }
 
   function openConversation(id: string) {
     if (id !== selectedId) setDetailsOpen(false)
-    setSelectedId(id)
-    setView('chat')
+    // Switching between chats replaces the entry, so Back returns to the list, not the previous chat.
+    navigate({ name: 'chat', id }, { replace: selectedId !== null })
   }
 
   const me = useMemo<User>(
@@ -178,25 +178,27 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
     resyncPush()
   }, [])
 
-  // Clicking a notification opens its chat: via ?c=<id> for a new tab, or a message
-  // from the service worker for a tab that was already open.
+  // Clicking a notification opens its chat: /c/<id> in a new tab, or a message from the
+  // service worker for a tab that was already open. (?c=<id> is the older link form.)
   useEffect(() => {
-    if (window.location.search.includes('c=')) window.history.replaceState(null, '', window.location.pathname)
+    const legacy = new URLSearchParams(window.location.search).get('c')
+    if (legacy) navigate({ name: 'chat', id: legacy }, { replace: true })
     const onMessage = (e: MessageEvent) => {
-      if (e.data?.type === 'open-conversation' && e.data.conversationId) {
-        setSelectedId(e.data.conversationId)
-        setView('chat')
+      if (e.data?.type === 'open-conversation' && typeof e.data.conversationId === 'string') {
+        navigate({ name: 'chat', id: e.data.conversationId })
       }
     }
     navigator.serviceWorker?.addEventListener('message', onMessage)
     return () => navigator.serviceWorker?.removeEventListener('message', onMessage)
   }, [])
 
-  // "(3) Hamsa" in the browser tab when chats are waiting.
+  // "(3) Hamsa" in the browser tab, and a 3 on the installed app's icon, when chats are waiting.
   useEffect(() => {
     document.title = unreadTotal > 0 ? `(${unreadTotal}) Hamsa` : 'Hamsa'
+    setAppBadge(unreadTotal)
     return () => {
       document.title = 'Hamsa'
+      setAppBadge(0)
     }
   }, [unreadTotal])
 
@@ -230,9 +232,9 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
           await detachPush().catch(() => undefined)
           await supabase.auth.signOut()
         }}
-        onOpenFriends={() => setView((v) => (v === 'friends' ? 'chat' : 'friends'))}
+        onOpenFriends={() => (view === 'friends' ? goBack() : navigate({ name: 'friends' }))}
         friendsActive={view === 'friends'}
-        onOpenProfile={() => setView((v) => (v === 'profile' ? 'chat' : 'profile'))}
+        onOpenProfile={() => (view === 'profile' ? goBack() : navigate({ name: 'profile' }))}
         profileActive={view === 'profile'}
         friendRequests={friendRequests}
       />
@@ -249,18 +251,14 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
             user={me}
             email={email}
             hasPassword={hasPassword}
-            onBack={() => {
-              setView('chat')
-              setSelectedId(null)
-            }}
+            onBack={goBack}
           />
+        ) : view === 'share' ? (
+          <SharePage conversations={conversations} me={me} onBack={goBack} />
         ) : view === 'friends' ? (
           <FriendsPage
             currentUserId={me.id}
-            onBack={() => {
-              setView('chat')
-              setSelectedId(null)
-            }}
+            onBack={goBack}
             onMessage={(user) => messageFriend.mutate(user)}
             messagingUserId={messageFriend.isPending ? messageFriend.variables?.id : null}
           />
@@ -275,7 +273,7 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
             onSent={() => channels.stopTyping(selected.id)}
             detailsOpen={detailsOpen}
             onToggleDetails={() => setDetailsOpen((open) => !open)}
-            onBack={() => setSelectedId(null)}
+            onBack={goBack}
             onAction={(action) => handleConversationAction(selected.id, action)}
           />
         ) : (
@@ -346,7 +344,7 @@ function OpenConversation({
 }: OpenConversationProps) {
   const { t } = useLocale()
   const messagesQuery = useMessages(conversation.id, conversation.clearedAt)
-  const send = useSendMessage(conversation.id)
+  const send = useSendMessage()
   const peer = conversation.isGroup ? undefined : conversation.members.find((m) => m.id !== me.id)
   const blocked = useBlockState(conversation.id, peer?.id)
   const setBlocked = useSetBlocked()
@@ -439,6 +437,13 @@ function LoadError({ onRetry }: { onRetry: () => void }) {
       </Button>
     </div>
   )
+}
+
+/** The Badging API (installed app icon); quietly does nothing where it isn't supported. */
+function setAppBadge(count: number) {
+  const badging = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> }
+  const done = count > 0 ? badging.setAppBadge?.(count) : badging.clearAppBadge?.()
+  done?.catch(() => undefined)
 }
 
 function useDocumentVisible() {

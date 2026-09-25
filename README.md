@@ -75,6 +75,11 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 - Responsive: three-pane desktop layout, two-screen mobile flow
 - Respects `prefers-reduced-motion`
 - A "Reconnecting…" banner when the connection drops, then catches up on anything missed
+- Real URLs (`/c/<chat>`, `/friends`, `/profile`): the Back button, including Android's, steps back through screens instead of leaving the app
+- Installable app that opens offline, with an update prompt when a new version is ready
+- An outbox: messages sent while offline wait and go out as soon as you're back (text messages even if you close Hamsa)
+- Unread count on the installed app's icon, "Share to Hamsa" from your phone's gallery, and "Mark as read" / "Reply" on notifications
+- A public home page with link previews (Open Graph) for sharing
 
 ---
 
@@ -221,7 +226,14 @@ Open <http://localhost:5173>. To try a conversation, sign up two accounts, one i
 
 The app is a static Vite build, deployed on Vercel. Add the same two `VITE_…` variables in
 **Vercel → Project → Settings → Environment Variables**. [`vercel.json`](vercel.json) sends every path
-to `index.html`, so pages like `/privacy` work on refresh.
+to `index.html`, so pages like `/c/<chat>` and `/privacy` work on refresh, and sets the security headers.
+
+Also worth setting:
+
+- `VITE_SITE_URL` (e.g. `https://hamsa-seven.vercel.app`): absolute links for link previews.
+- **Analytics → Enable** and **Speed Insights → Enable** in the Vercel project: anonymous page views and
+  loading speed (chat ids are removed from URLs before they're sent).
+- `VITE_SENTRY_DSN` (optional): error reports to [Sentry](https://sentry.io). Without it, Sentry isn't even downloaded.
 
 > For quick local testing, you can turn off **Authentication → Sign In / Providers → Email → Confirm email**.
 
@@ -249,6 +261,9 @@ Supabase's built-in email only sends to your own team, so real users need your o
 5. **Database → Webhooks → Create**: table `messages`, event *Insert*, type *Supabase Edge Functions*,
    function `send-push`, and an HTTP header `x-webhook-secret` with the same secret.
 6. In Hamsa: **My profile → Notifications → Turn on**. On iPhone, first *Share → Add to Home Screen*.
+7. Optional, the **Mark as read** button on notifications: add an `ACTION_SECRET` secret (any long random
+   string), and deploy [`supabase/functions/notification-action/index.ts`](supabase/functions/notification-action/index.ts)
+   as `notification-action` with **Verify JWT** off. Redeploy `send-push` so it picks up the secret.
 
 ### Account deletion
 
@@ -276,23 +291,26 @@ Supabase's built-in email only sends to your own team, so real users need your o
 
 ```
 src/
-├── components/ui/        Button, Avatar, Badge, Menu, TextField, Spinner…
+├── components/           Update prompt, crash screen; ui/: Button, Avatar, Badge, Menu, Link, TextField…
 ├── features/
 │   ├── auth/             Login and sign-up, session
 │   ├── chat/             The signed-in app shell
 │   ├── conversations/    Sidebar, conversation list and menu, new chat dialog
 │   ├── messages/         Thread, message bubble, composer, emoji picker
 │   ├── friends/          Friends, requests, people search
+│   ├── landing/          The public home page
+│   ├── share/            "Share to Hamsa" from other apps
 │   ├── profile/          Profile editing
 │   ├── privacy/          Blocking people, who can add you to groups
 │   ├── realtime/         Live updates, presence, typing
 │   └── legal/            Privacy policy
-├── lib/                  Supabase client, i18n and dates, theme, image resizing
+├── lib/                  Supabase client, router, i18n and dates, theme, cache persistence, monitoring
+├── sw.ts                 Service worker: offline app shell, push, notification buttons, share target
 ├── styles/               Design tokens and the Tailwind theme
 └── types/                App types and generated database types
 supabase/
 ├── schema.sql            The complete database in one file
-├── functions/            Edge Functions: send-push, delete-account, cleanup-storage
+├── functions/            Edge Functions: send-push, notification-action, delete-account, cleanup-storage
 ├── email-templates/      Verification and reset emails with the 6-digit code
 ├── migrations/           The same schema, step by step
 └── tests/                SQL tests for the security rules

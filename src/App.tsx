@@ -1,6 +1,11 @@
-import { lazy, Suspense } from 'react'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
+import { lazy, Suspense, useEffect } from 'react'
 import { BrandMark } from '@/components/ui/BrandMark'
+import { UpdatePrompt } from '@/components/UpdatePrompt'
 import { useSession } from '@/features/auth/useSession'
+import { anonymousPageView } from '@/lib/monitoring'
+import { navigate, useRoute } from '@/lib/router'
 import { useTheme } from '@/lib/theme'
 
 // Each screen is its own download: signing in doesn't load the chat app, and the other way round.
@@ -10,12 +15,19 @@ const SetNewPasswordPage = lazy(() =>
 )
 const ChatApp = lazy(() => import('@/features/chat/ChatApp').then((m) => ({ default: m.ChatApp })))
 const PrivacyPage = lazy(() => import('@/features/legal/PrivacyPage').then((m) => ({ default: m.PrivacyPage })))
+const LandingPage = lazy(() => import('@/features/landing/LandingPage').then((m) => ({ default: m.LandingPage })))
 
 export default function App() {
   return (
-    <Suspense fallback={<Splash />}>
-      <Screen />
-    </Suspense>
+    <>
+      <Suspense fallback={<Splash />}>
+        <Screen />
+      </Suspense>
+      <UpdatePrompt />
+      {/* Anonymous page views and speed (turn them on in the Vercel project). */}
+      <Analytics beforeSend={anonymousPageView} />
+      <SpeedInsights beforeSend={anonymousPageView} />
+    </>
   )
 }
 
@@ -30,13 +42,24 @@ function Splash() {
 function Screen() {
   const { theme, toggleTheme } = useTheme()
   const { session, loading, recovering, doneRecovering } = useSession()
+  const route = useRoute()
+  const signedIn = Boolean(session)
+
+  // Signed in on the sign-in page (e.g. just signed in): go to your chats.
+  useEffect(() => {
+    if (signedIn && route.name === 'login') navigate({ name: 'home' }, { replace: true })
+  }, [signedIn, route.name])
 
   // Public page, reachable without signing in (Google requires a privacy policy link).
-  if (window.location.pathname === '/privacy') return <PrivacyPage />
+  if (route.name === 'privacy') return <PrivacyPage />
 
   if (loading) return <Splash />
 
-  if (!session) return <LoginPage theme={theme} onToggleTheme={toggleTheme} />
+  if (!session) {
+    // The home page introduces Hamsa; any other link (e.g. to a chat) asks you to sign in first.
+    if (route.name === 'home') return <LandingPage theme={theme} onToggleTheme={toggleTheme} />
+    return <LoginPage theme={theme} onToggleTheme={toggleTheme} />
+  }
 
   // Arrived from the "reset password" email link: choose a new password first.
   if (recovering) return <SetNewPasswordPage onDone={doneRecovering} />

@@ -11,6 +11,7 @@ import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
 import type { Attachment, MessageKind } from '@/types/chat'
 import { MAX_FILE_BYTES, MAX_IMAGE_BYTES, kindForFile } from './api'
+import { peekShare, takeShare } from './sharedIn'
 import { useVoiceRecorder } from './useVoiceRecorder'
 
 // The emoji list is large: it loads the first time you open the picker.
@@ -44,7 +45,8 @@ interface ComposerProps {
 
 export function Composer({ conversationId, recipientName, onSend, onTyping }: ComposerProps) {
   const { t, lang, dir, locale } = useLocale()
-  const [text, setText] = useState(() => drafts.get(conversationId) ?? '')
+  const [shared] = useState(() => peekShare(conversationId))
+  const [text, setText] = useState(() => shared?.text || drafts.get(conversationId) || '')
   const [pending, setPending] = useState<Pending | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -72,6 +74,15 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
     const lineHeight = parseFloat(getComputedStyle(el).lineHeight)
     el.style.height = `${Math.min(el.scrollHeight, lineHeight * MAX_LINES)}px`
   }, [text, lang, pending])
+
+  // A shared file goes through the same checks as one you pick, once.
+  useEffect(() => {
+    if (!shared) return
+    takeShare(conversationId)
+    if (shared.file) attach(shared.file)
+    // Only on arrival; attach is stable enough for this one-off use.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Free the preview's memory when it's replaced or the composer goes away.
   useEffect(() => () => {
