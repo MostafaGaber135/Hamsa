@@ -56,6 +56,7 @@ function applyAction(c: Conversation, action: ConversationAction): Conversation 
     case 'unmute': return { ...c, muted: false }
     case 'markRead': return { ...c, unreadCount: 0, markedUnread: false }
     case 'markUnread': return { ...c, markedUnread: true }
+    case 'accept': return { ...c, isRequest: false }
     case 'delete':
     case 'leave': return null
   }

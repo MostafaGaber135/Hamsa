@@ -1,5 +1,5 @@
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const SEND_EVERY_MS = 2_000
@@ -8,16 +8,32 @@ const HIDE_AFTER_MS = 5_000
 type TypingMap = Record<string, string[]>
 
 /**
- * "Sara is typing…" through Realtime Broadcast: nothing is stored in the database.
- * One private channel per conversation ("typing:<id>"); the realtime.messages policies
- * only let members of that conversation join it.
+ * One private Realtime channel per conversation ("typing:<id>"), carrying:
+ * - "Sara is typing…" through Broadcast (nothing is stored in the database)
+ * - who is online through Presence
+ * The realtime.messages policies only let members in (and not a one-to-one chat
+ * where either person blocked the other), so your online status only ever
+ * reaches people you chat with. `shareOnline` false: you watch, but never appear.
+ * `quietIds`: conversations where you never appear either — message requests you
+ * haven't accepted, so a stranger can't message you just to see when you're online.
  */
-export function useTyping(conversationIds: string[], userId: string) {
+export function useConversationChannels(
+  conversationIds: string[],
+  userId: string,
+  shareOnline: boolean,
+  quietIds: string[],
+) {
   const [typing, setTyping] = useState<TypingMap>({})
+  const [onlineIn, setOnlineIn] = useState<Record<string, string[]>>({})
+  const [wentOfflineAt, setWentOfflineAt] = useState<Record<string, string>>({})
   const channels = useRef(new Map<string, RealtimeChannel>())
   const lastSent = useRef(new Map<string, number>())
   const hideTimers = useRef(new Map<string, number>())
+  const shareRef = useRef(shareOnline)
+  const quietKey = [...quietIds].sort().join(',')
+  const quietRef = useRef(new Set(quietIds))
   const idsKey = [...conversationIds].sort().join(',')
+  const appearsIn = useCallback((id: string) => shareRef.current && !quietRef.current.has(id), [])
 
   const setUserTyping = useCallback((conversationId: string, typerId: string, isTyping: boolean) => {
     const update = (on: boolean) =>
@@ -45,6 +61,7 @@ export function useTyping(conversationIds: string[], userId: string) {
       if (!wanted.has(id)) {
         supabase.removeChannel(channel)
         open.delete(id)
+        setOnlineIn(({ [id]: _gone, ...rest }) => rest)
       }
     }
 
@@ -53,12 +70,18 @@ export function useTyping(conversationIds: string[], userId: string) {
       if (cancelled) return
       for (const id of wanted) {
         if (open.has(id)) continue
-        const channel = supabase
-          .channel(`typing:${id}`, { config: { private: true } })
+        const channel = supabase.channel(`typing:${id}`, { config: { private: true, presence: { key: userId } } })
+        channel
           .on('broadcast', { event: 'typing' }, ({ payload }) => {
             if (payload?.userId && payload.userId !== userId) setUserTyping(id, payload.userId, Boolean(payload.typing))
           })
-          .subscribe()
+          .on('presence', { event: 'sync' }, () => {
+            const here = Object.keys(channel.presenceState()).filter((key) => key !== userId)
+            setOnlineIn((map) => ({ ...map, [id]: here }))
+          })
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED' && appearsIn(id)) channel.track({})
+          })
         open.set(id, channel)
       }
     })
@@ -66,7 +89,18 @@ export function useTyping(conversationIds: string[], userId: string) {
     return () => {
       cancelled = true
     }
-  }, [idsKey, userId, setUserTyping])
+  }, [idsKey, userId, setUserTyping, appearsIn])
+
+  // Turning "show when I'm online" on or off, or accepting a request, applies at once.
+  useEffect(() => {
+    shareRef.current = shareOnline
+    quietRef.current = new Set(quietKey ? quietKey.split(',') : [])
+    for (const [id, channel] of channels.current) {
+      if (channel.state !== 'joined') continue
+      if (appearsIn(id)) channel.track({})
+      else channel.untrack()
+    }
+  }, [shareOnline, quietKey, appearsIn])
 
   // Leave every channel when signing out.
   useEffect(() => {
@@ -78,6 +112,19 @@ export function useTyping(conversationIds: string[], userId: string) {
       for (const timer of timers.values()) window.clearTimeout(timer)
     }
   }, [])
+
+  // Online anywhere = online. Someone you share several chats with is in several channels.
+  const online = useMemo<ReadonlySet<string>>(() => new Set(Object.values(onlineIn).flat()), [onlineIn])
+
+  // Remember when people went offline during this session, for "last seen just now".
+  const previousOnline = useRef<ReadonlySet<string>>(new Set())
+  useEffect(() => {
+    const left = [...previousOnline.current].filter((id) => !online.has(id))
+    previousOnline.current = online
+    if (left.length === 0) return
+    const at = new Date().toISOString()
+    setWentOfflineAt((map) => ({ ...map, ...Object.fromEntries(left.map((id) => [id, at])) }))
+  }, [online])
 
   /** Call on every keystroke; it sends at most one event every 2 seconds. */
   const sendTyping = useCallback(
@@ -99,5 +146,5 @@ export function useTyping(conversationIds: string[], userId: string) {
     [userId],
   )
 
-  return { typing, sendTyping, stopTyping }
+  return { typing, sendTyping, stopTyping, online, wentOfflineAt }
 }

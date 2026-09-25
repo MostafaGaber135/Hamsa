@@ -10,6 +10,7 @@ const strings = {
     filterUnread: 'Unread',
     filterUnreadCount: (n: string) => `Unread · ${n}`,
     filterGroups: 'Groups',
+    filterRequests: (n: string) => `Requests · ${n}`,
     conversations: 'Conversations',
     online: 'online',
     lastSeen: (time: string) => `last seen ${time}`,
@@ -268,6 +269,9 @@ const strings = {
     privacySettings: {
       title: 'Privacy',
       description: 'Who can reach you on Hamsa.',
+      presence: 'Who can see when I’m online and my last seen',
+      presenceContacts: 'People I chat with',
+      presenceNobody: 'Nobody',
       groupInvites: 'Who can add me to groups',
       everyone: 'Everyone',
       friendsOnly: 'Only my friends',
@@ -283,6 +287,22 @@ const strings = {
       youBlocked: (name: string) => `You blocked ${name}.`,
       cantReply: 'You can’t reply to this conversation.',
     },
+    request: {
+      title: 'Message request',
+      notice: (name: string) =>
+        `${name} isn’t in your friends. They won’t know you’ve read this until you accept or reply.`,
+      accept: 'Accept',
+      delete: 'Delete',
+      block: 'Block',
+    },
+    deleteAccount: {
+      title: 'Delete account',
+      description:
+        'Permanently deletes your profile, your messages, your one-to-one chats, friends and settings. Groups you’re in carry on without you. This can’t be undone.',
+      confirmLabel: (username: string) => `To confirm, type your username: ${username}`,
+      button: 'Delete my account',
+      failed: 'Your account couldn’t be deleted. Check your connection and try again.',
+    },
   },
   ar: {
     search: 'ابحث في المحادثات أو الأشخاص',
@@ -291,6 +311,7 @@ const strings = {
     filterUnread: 'غير مقروءة',
     filterUnreadCount: (n: string) => `غير مقروءة (${n})`,
     filterGroups: 'المجموعات',
+    filterRequests: (n: string) => `الطلبات (${n})`,
     conversations: 'المحادثات',
     online: 'متصل الآن',
     lastSeen: (time: string) => `آخر ظهور ${time}`,
@@ -549,6 +570,9 @@ const strings = {
     privacySettings: {
       title: 'الخصوصية',
       description: 'من يمكنه الوصول إليك على همسة.',
+      presence: 'من يمكنه رؤية حالة اتصالي وآخر ظهور لي',
+      presenceContacts: 'من أتحدث معهم',
+      presenceNobody: 'لا أحد',
       groupInvites: 'من يمكنه إضافتي إلى المجموعات',
       everyone: 'الجميع',
       friendsOnly: 'أصدقائي فقط',
@@ -563,6 +587,22 @@ const strings = {
         `حظر ${name}؟ لن يتمكن من مراسلتك أو إرسال طلب صداقة إليك، وستنتهي صداقتكما.`,
       youBlocked: (name: string) => `لقد حظرت ${name}.`,
       cantReply: 'لا يمكنك الرد على هذه المحادثة.',
+    },
+    request: {
+      title: 'طلب مراسلة',
+      notice: (name: string) =>
+        `${name} ليس من أصدقائك. لن يعرف أنك قرأت الرسائل حتى تقبل أو ترد.`,
+      accept: 'قبول',
+      delete: 'حذف',
+      block: 'حظر',
+    },
+    deleteAccount: {
+      title: 'حذف الحساب',
+      description:
+        'يحذف نهائيًا ملفك الشخصي ورسائلك ومحادثاتك الفردية وأصدقاءك وإعداداتك. المجموعات التي أنت فيها تستمر بدونك. لا يمكن التراجع عن ذلك.',
+      confirmLabel: (username: string) => `للتأكيد، اكتب اسم المستخدم الخاص بك: ${username}`,
+      button: 'حذف حسابي',
+      failed: 'تعذّر حذف حسابك. تحقق من اتصالك وحاول مرة أخرى.',
     },
   },
 } satisfies Record<Lang, unknown>

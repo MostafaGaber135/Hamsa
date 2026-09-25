@@ -16,10 +16,10 @@ import { ChatPane } from '@/features/messages/ChatPane'
 import type { Draft } from '@/features/messages/Composer'
 import { MediaViewer } from '@/features/messages/MediaViewer'
 import { useMessages, useSendMessage } from '@/features/messages/queries'
-import { useBlockState, useSetBlocked } from '@/features/privacy/queries'
+import { useBlockState, usePrivacySettings, useSetBlocked } from '@/features/privacy/queries'
 import { useLiveUpdates, type Connection } from '@/features/realtime/useLiveUpdates'
-import { usePresence } from '@/features/realtime/usePresence'
-import { useTyping } from '@/features/realtime/useTyping'
+import { useConversationChannels } from '@/features/realtime/useConversationChannels'
+import { useLastSeenHeartbeat } from '@/features/realtime/useLastSeen'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
 import { withStatus } from '@/lib/status'
@@ -88,21 +88,27 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
   )
 
   // ---- Realtime: who's online, who's typing, and live database changes ----
-  const presence = usePresence(userId)
+  useLastSeenHeartbeat()
   const visible = useDocumentVisible()
   const { mutate: markReadMutate } = markRead
+  const rawConversations = conversationsQuery.data
+  // Reading a message request doesn't tell the sender: no read receipt until you accept.
+  const selectedIsRequest = Boolean(rawConversations?.find((c) => c.id === selectedId)?.isRequest)
   const connection = useLiveUpdates({
     userId,
     openConversationId: view === 'chat' ? selectedId : null,
-    onReadWhileOpen: markReadMutate,
+    onReadWhileOpen: selectedIsRequest ? ignoreRead : markReadMutate,
   })
-  const rawConversations = conversationsQuery.data
   const conversationIds = useMemo(() => (rawConversations ?? []).map((c) => c.id), [rawConversations])
-  const typing = useTyping(conversationIds, userId)
+  const requestIds = useMemo(() => (rawConversations ?? []).filter((c) => c.isRequest).map((c) => c.id), [rawConversations])
+  // You appear online only once your setting is known, only if it allows it,
+  // and never in a message request you haven't accepted.
+  const privacy = usePrivacySettings(userId)
+  const channels = useConversationChannels(conversationIds, userId, privacy.data?.presence === 'contacts', requestIds)
+  const { online, wentOfflineAt, typing } = channels
 
   // Server data + live data: online dots, "last seen", and who's typing.
   const conversations = useMemo<Conversation[]>(() => {
-    const { online, wentOfflineAt } = presence
     const live = <T extends User>(u: T): T => {
       const leftAt = wentOfflineAt[u.id]
       const lastSeenAt = leftAt && (!u.lastSeenAt || leftAt > u.lastSeenAt) ? leftAt : u.lastSeenAt
@@ -111,9 +117,9 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
     return (rawConversations ?? []).map((c) => ({
       ...c,
       members: c.members.map(live),
-      typingUserIds: typing.typing[c.id] ?? [],
+      typingUserIds: typing[c.id] ?? [],
     }))
-  }, [rawConversations, presence, typing.typing])
+  }, [rawConversations, online, wentOfflineAt, typing])
 
   // Everyone you share a conversation with, by id.
   const users = useMemo(() => {
@@ -136,6 +142,8 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
           lastSender: lastMessage && users[lastMessage.senderId],
         }
       })
+      // Message requests live in their own tab.
+      .filter((it) => (filter === 'requests') === it.conversation.isRequest)
       .filter((it) => filter !== 'unread' || it.conversation.unreadCount > 0 || it.conversation.markedUnread)
       .filter((it) => filter !== 'groups' || it.conversation.isGroup)
       .filter((it) => it.title.toLocaleLowerCase().includes(q))
@@ -144,14 +152,15 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
   const selected = conversations.find((c) => c.id === selectedId)
   // On mobile the sidebar and the main pane take turns filling the screen.
   const mainOpen = view !== 'chat' || Boolean(selected)
-  const unreadTotal = conversations.filter((c) => c.unreadCount > 0 || c.markedUnread).length
+  const unreadTotal = conversations.filter((c) => !c.isRequest && (c.unreadCount > 0 || c.markedUnread)).length
+  const requestCount = conversations.filter((c) => c.isRequest).length
 
   // Opening a conversation with unread messages marks it read, but only while you can see it.
   const selectedUnread = (selected?.unreadCount ?? 0) > 0 || Boolean(selected?.markedUnread)
   const reading = view === 'chat' && visible
   useEffect(() => {
-    if (selectedId && selectedUnread && reading) markReadMutate(selectedId)
-  }, [selectedId, selectedUnread, reading, markReadMutate])
+    if (selectedId && selectedUnread && reading && !selectedIsRequest) markReadMutate(selectedId)
+  }, [selectedId, selectedUnread, reading, selectedIsRequest, markReadMutate])
 
   // Notifications: this device notifies whoever is signed in now.
   useEffect(() => {
@@ -193,6 +202,7 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
         className={cn('w-full md:w-80 lg:w-88', mainOpen ? 'hidden md:flex' : 'flex')}
         items={items}
         unreadTotal={unreadTotal}
+        requestCount={requestCount}
         selectedId={selectedId}
         currentUser={me}
         query={query}
@@ -249,11 +259,12 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
             me={me}
             users={users}
             connection={connection}
-            onTyping={() => typing.sendTyping(selected.id)}
-            onSent={() => typing.stopTyping(selected.id)}
+            onTyping={() => channels.sendTyping(selected.id)}
+            onSent={() => channels.stopTyping(selected.id)}
             detailsOpen={detailsOpen}
             onToggleDetails={() => setDetailsOpen((open) => !open)}
             onBack={() => setSelectedId(null)}
+            onAction={(action) => handleConversationAction(selected.id, action)}
           />
         ) : (
           <EmptyState onNewChat={() => setNewChatOpen(true)} />
@@ -291,6 +302,9 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
   )
 }
 
+/** Used while a message request is open: reading it doesn't mark it read. */
+const ignoreRead = () => undefined
+
 interface OpenConversationProps {
   conversation: Conversation
   me: User
@@ -299,13 +313,15 @@ interface OpenConversationProps {
   onTyping: () => void
   onSent: () => void
   onBack: () => void
+  /** Accept or delete a message request. */
+  onAction: (action: ConversationAction) => void
   detailsOpen: boolean
   onToggleDetails: () => void
 }
 
 /** Its own component so each open conversation gets its own message query and send mutation. */
 function OpenConversation({
-  conversation, me, users, connection, onTyping, onSent, onBack, detailsOpen, onToggleDetails,
+  conversation, me, users, connection, onTyping, onSent, onBack, onAction, detailsOpen, onToggleDetails,
 }: OpenConversationProps) {
   const { t } = useLocale()
   const messagesQuery = useMessages(conversation.id, conversation.clearedAt)
@@ -370,6 +386,15 @@ function OpenConversation({
       onToggleDetails={onToggleDetails}
       blocked={blocked}
       onUnblock={peer && (() => setBlocked.mutate({ userId: peer.id, blocked: false }))}
+      request={
+        conversation.isRequest && peer && !blocked
+          ? {
+              onAccept: () => onAction('accept'),
+              onBlock: () => window.confirm(t.block.confirm(peer.name)) && setBlocked.mutate({ userId: peer.id, blocked: true }),
+              onDelete: () => onAction('delete'),
+            }
+          : undefined
+      }
     />
   )
 }

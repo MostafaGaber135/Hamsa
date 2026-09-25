@@ -1,4 +1,5 @@
 import { extensionFor, resizeImage } from '@/lib/image'
+import { detachPush } from '@/lib/push'
 import { supabase } from '@/lib/supabase'
 
 export const USERNAME_PATTERN = /^[a-z0-9_]{3,24}$/
@@ -71,6 +72,18 @@ export async function removeAvatar(userId: string, previousUrl?: string | null) 
   const { error } = await supabase.from('profiles').update({ avatar_url: null }).eq('id', userId)
   if (error) throw error
   await deleteOldFile(previousUrl)
+}
+
+/**
+ * Permanently deletes your account through the delete-account Edge Function
+ * (only the server may delete a sign-in account), then signs this browser out.
+ */
+export async function deleteAccount() {
+  await detachPush().catch(() => undefined)
+  const { error } = await supabase.functions.invoke('delete-account', { method: 'POST' })
+  if (error) throw error
+  // The session no longer exists on the server: just forget it here.
+  await supabase.auth.signOut({ scope: 'local' })
 }
 
 export async function changePassword(password: string) {

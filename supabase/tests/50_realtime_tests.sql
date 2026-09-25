@@ -25,15 +25,19 @@ select pg_temp.as_user('44444444-4444-4444-4444-444444444444');  -- gina, not a 
 do $$ begin insert into realtime.messages (topic, extension) values (current_setting('realtime.topic'), 'broadcast'); raise notice 'FAIL gina typed';
 exception when insufficient_privilege then raise notice 'OK: outsider cannot send typing events'; end $$;
 select 'gina sees typing rows: ' || count(*) from realtime.messages;
+-- Online status travels on the conversation channel: members only.
+do $$ begin insert into realtime.messages (topic, extension) values (current_setting('realtime.topic'), 'presence'); raise notice 'FAIL gina presence';
+exception when insufficient_privilege then raise notice 'OK: outsider cannot share or watch presence in a chat'; end $$;
+select pg_temp.as_user('22222222-2222-2222-2222-222222222222');
+insert into realtime.messages (topic, extension) values (current_setting('realtime.topic'), 'presence');
+select 'bob can appear online in his chat: ok';
 select set_config('realtime.topic', 'online-users', false);
-insert into realtime.messages (topic, extension) values ('online-users', 'presence');
-select 'gina can appear online: ok';
-do $$ begin insert into realtime.messages (topic, extension) values ('online-users', 'broadcast'); raise notice 'FAIL broadcast on presence topic';
-exception when insufficient_privilege then raise notice 'OK: online channel is presence only'; end $$;
+do $$ begin insert into realtime.messages (topic, extension) values ('online-users', 'presence'); raise notice 'FAIL global online channel';
+exception when insufficient_privilege then raise notice 'OK: the old everyone-sees-everyone channel is closed'; end $$;
 select set_config('realtime.topic', 'typing:not-a-uuid', false);
 do $$ begin insert into realtime.messages (topic, extension) values ('typing:not-a-uuid', 'broadcast'); raise notice 'FAIL bad topic';
 exception when insufficient_privilege then raise notice 'OK: malformed topic rejected'; end $$;
 reset role; set role anon;
-select set_config('realtime.topic', 'online-users', false);
-do $$ begin insert into realtime.messages (topic, extension) values ('online-users', 'presence'); raise notice 'FAIL anon online';
+select set_config('realtime.topic', 'typing:' || :'direct', false);
+do $$ begin insert into realtime.messages (topic, extension) values (current_setting('realtime.topic'), 'presence'); raise notice 'FAIL anon presence';
 exception when insufficient_privilege then raise notice 'OK: signed-out visitors cannot join'; end $$;

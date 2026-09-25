@@ -48,16 +48,14 @@ Deno.serve(async (req) => {
     return Response.json({ skipped: true })
   }
 
-  // Everyone in the conversation except the sender, minus people who muted it.
-  const { data: participants, error } = await supabase
-    .from('conversation_participants')
-    .select('user_id, muted')
-    .eq('conversation_id', m.conversation_id)
-    .neq('user_id', m.sender_id)
+  // Everyone in the conversation except the sender, minus people who muted it
+  // or haven't accepted it yet (a message request from a stranger).
+  const { data: recipients, error } = await supabase.rpc('push_recipients', {
+    conv_id: m.conversation_id,
+    sender: m.sender_id,
+  })
   if (error) return Response.json({ error: error.message }, { status: 500 })
-
-  const recipients = (participants ?? []).filter((p) => !p.muted).map((p) => p.user_id)
-  if (recipients.length === 0) return Response.json({ sent: 0 })
+  if (!recipients?.length) return Response.json({ sent: 0 })
 
   const [{ data: sender }, { data: conversation }, { data: subscriptions }] = await Promise.all([
     supabase.from('profiles').select('full_name, avatar_url').eq('id', m.sender_id).single(),

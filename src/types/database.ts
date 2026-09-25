@@ -61,6 +61,7 @@ export type Database = {
           last_seen_at: string
           created_at: string
           group_invites: string
+          presence_visibility: string
         }
         Insert: {
           id: string
@@ -70,6 +71,7 @@ export type Database = {
           last_seen_at?: string
           created_at?: string
           group_invites?: string
+          presence_visibility?: string
         }
         Update: {
           id?: string
@@ -79,6 +81,7 @@ export type Database = {
           last_seen_at?: string
           created_at?: string
           group_invites?: string
+          presence_visibility?: string
         }
         Relationships: []
       }
@@ -236,7 +239,12 @@ export type Database = {
           avatar_url: string | null
           wallpaper: string | null
           my_role: string
+          is_request: boolean
         }[]
+      }
+      accept_message_request: {
+        Args: { conv_id: string }
+        Returns: undefined
       }
       get_my_friendships: {
         Args: never

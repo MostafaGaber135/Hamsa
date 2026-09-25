@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { conversationKeys } from '@/features/conversations/queries'
 import { friendKeys } from '@/features/friends/queries'
 import {
-  fetchBlockedConversationIds, fetchBlocks, fetchGroupInvites, setBlocked, updateGroupInvites, type GroupInvites,
+  fetchBlockedConversationIds, fetchBlocks, fetchPrivacySettings, setBlocked, updatePrivacySettings, type PrivacySettings,
 } from './api'
 
 export const privacyKeys = {
@@ -10,7 +10,7 @@ export const privacyKeys = {
   blocks: ['blocks'] as const,
   blockedUsers: ['blocks', 'users'] as const,
   blockedConversations: ['blocks', 'conversations'] as const,
-  groupInvites: (userId: string) => ['group-invites', userId] as const,
+  settings: (userId: string) => ['privacy-settings', userId] as const,
 }
 
 export function useBlockedUsers() {
@@ -42,22 +42,22 @@ export function useSetBlocked() {
   })
 }
 
-export function useGroupInvites(userId: string) {
-  return useQuery({ queryKey: privacyKeys.groupInvites(userId), queryFn: () => fetchGroupInvites(userId) })
+export function usePrivacySettings(userId: string) {
+  return useQuery({ queryKey: privacyKeys.settings(userId), queryFn: () => fetchPrivacySettings(userId) })
 }
 
 /** Applied instantly, rolled back if the server says no. */
-export function useSetGroupInvites(userId: string) {
+export function useUpdatePrivacySettings(userId: string) {
   const qc = useQueryClient()
-  const key = privacyKeys.groupInvites(userId)
+  const key = privacyKeys.settings(userId)
   return useMutation({
-    mutationFn: (value: GroupInvites) => updateGroupInvites(userId, value),
-    onMutate: (value) => {
-      const previous = qc.getQueryData<GroupInvites>(key)
-      qc.setQueryData(key, value)
+    mutationFn: (changes: Partial<PrivacySettings>) => updatePrivacySettings(userId, changes),
+    onMutate: (changes) => {
+      const previous = qc.getQueryData<PrivacySettings>(key)
+      if (previous) qc.setQueryData<PrivacySettings>(key, { ...previous, ...changes })
       return { previous }
     },
-    onError: (_error, _value, context) => qc.setQueryData(key, context?.previous),
+    onError: (_error, _changes, context) => qc.setQueryData(key, context?.previous),
     onSettled: () => qc.invalidateQueries({ queryKey: key }),
   })
 }

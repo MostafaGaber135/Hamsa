@@ -10,7 +10,7 @@ import { PushServiceError, disablePush, enablePush, getPushStatus, type PushStat
 import { useDebounced } from '@/lib/useDebounced'
 import type { User } from '@/types/chat'
 import { USERNAME_PATTERN, UsernameTakenError, validateImage } from './api'
-import { useAvatar, useChangePassword, useUpdateProfile, useUsernameAvailability } from './queries'
+import { useAvatar, useChangePassword, useDeleteAccount, useUpdateProfile, useUsernameAvailability } from './queries'
 
 interface ProfilePageProps {
   user: User
@@ -50,6 +50,7 @@ export function ProfilePage({ user, email, hasPassword, onBack }: ProfilePagePro
             <PrivacySettings userId={user.id} />
           </Card>
           <PasswordCard hasPassword={hasPassword} />
+          <DeleteAccountCard username={user.username ?? ''} />
         </div>
       </div>
     </>
@@ -259,6 +260,45 @@ function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
           {saved && <SavedNote>{t.profile.passwordUpdated}</SavedNote>}
           <Button type="submit" variant="secondary" disabled={change.isPending || !password || !confirm}>
             {hasPassword ? t.profile.changePassword : t.profile.setPassword}
+          </Button>
+        </div>
+      </form>
+    </Card>
+  )
+}
+
+/** Typing your username is the confirmation: this can't be undone. */
+function DeleteAccountCard({ username }: { username: string }) {
+  const { t } = useLocale()
+  const remove = useDeleteAccount()
+  const [typed, setTyped] = useState('')
+  const confirmed = username !== '' && typed.trim().toLowerCase() === username
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (confirmed) remove.mutate()
+  }
+
+  return (
+    <Card title={t.deleteAccount.title} description={t.deleteAccount.description}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <TextField
+          label={t.deleteAccount.confirmLabel(username)}
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          dir="ltr"
+          autoComplete="off"
+          spellCheck={false}
+        />
+        {remove.error && <ErrorNote>{t.deleteAccount.failed}</ErrorNote>}
+        <div className="flex justify-end">
+          <Button
+            type="submit"
+            variant="danger"
+            disabled={!confirmed || remove.isPending}
+            icon={remove.isPending ? <Spinner /> : <Trash2 size={16} strokeWidth={1.75} aria-hidden />}
+          >
+            {t.deleteAccount.button}
           </Button>
         </div>
       </form>

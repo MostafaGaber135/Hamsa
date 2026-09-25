@@ -51,7 +51,8 @@ const content: Record<'en' | 'ar', { title: string; intro: string; updated: stri
       {
         title: 'Your choices',
         body: [
-          `You can ask for a copy of your data, or for your account and everything in it to be deleted, by emailing ${CONTACT_EMAIL}. Deleting your account removes your profile, messages and friendships.`,
+          `You can delete your account at any time from My profile → Delete account. It removes your profile, your messages, your one-to-one chats and your friendships straight away. For a copy of your data, email ${CONTACT_EMAIL}.`,
+          'In My profile → Privacy you choose who sees when you’re online and your last seen, who can add you to groups, and who you’ve blocked.',
           'If you signed in with Google, you can also remove Hamsa’s access at any time from your Google Account, under Security → Third-party connections.',
         ],
       },
@@ -103,7 +104,8 @@ const content: Record<'en' | 'ar', { title: string; intro: string; updated: stri
       {
         title: 'خياراتك',
         body: [
-          `يمكنك طلب نسخة من بياناتك، أو حذف حسابك وكل ما فيه، بمراسلة ${CONTACT_EMAIL}. حذف الحساب يزيل ملفك الشخصي ورسائلك وصداقاتك.`,
+          `يمكنك حذف حسابك في أي وقت من ملفي الشخصي ← حذف الحساب، فيُزال ملفك الشخصي ورسائلك ومحادثاتك الفردية وصداقاتك فورًا. للحصول على نسخة من بياناتك راسلنا على ${CONTACT_EMAIL}.`,
+          'من ملفي الشخصي ← الخصوصية تختار من يرى حالة اتصالك وآخر ظهور لك، ومن يمكنه إضافتك إلى المجموعات، ومن حظرتهم.',
           'إذا سجّلت الدخول عبر Google، يمكنك أيضًا إلغاء وصول همسة في أي وقت من حسابك على Google، من الأمان ثم الاتصالات بجهات خارجية.',
         ],
       },
