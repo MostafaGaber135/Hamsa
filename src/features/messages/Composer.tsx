@@ -235,7 +235,7 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
                 type="button"
                 onClick={() => setPending(null)}
                 aria-label={t.rich.removeAttachment}
-                className="absolute -end-2 -top-2 inline-flex size-6 items-center justify-center rounded-full bg-ink text-canvas shadow-sm hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                className="absolute -inset-e- -top-2 inline-flex size-6 items-center justify-center rounded-full bg-ink text-canvas shadow-sm hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
               >
                 <X size={14} strokeWidth={2.5} aria-hidden />
               </button>
@@ -253,11 +253,11 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
               <span className="sr-only">{t.rich.recording}</span>
               <span className="shrink-0 tabular-nums text-ink-muted">{formatDuration(recorder.elapsedMs, locale)}</span>
               {/* Live loudness: newest bar on the right, like a scrolling tape. */}
-              <span dir="ltr" aria-hidden className="flex h-8 min-w-0 flex-1 items-center justify-end gap-[3px] overflow-hidden">
+              <span dir="ltr" aria-hidden className="flex h-8 min-w-0 flex-1 items-center justify-end gap-0.75 overflow-hidden">
                 {recorder.levels.map((level, i) => (
                   <span
                     key={i}
-                    className="w-[3px] shrink-0 rounded-full bg-accent transition-[height] duration-75"
+                    className="w-0.75 shrink-0 rounded-full bg-accent transition-[height] duration-75"
                     style={{ height: `${Math.max(12, level * 100)}%` }}
                   />
                 ))}
