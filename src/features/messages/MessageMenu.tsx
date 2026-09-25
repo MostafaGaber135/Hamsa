@@ -1,4 +1,5 @@
 import { Copy, Flag, Info, Pencil, Pin, PinOff, Reply, SmilePlus, Star, StarOff, Trash2 } from 'lucide-react'
+import { useConfirm } from '@/components/ui/confirm'
 import { useEffect, useState } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Dialog } from '@/components/ui/Dialog'
@@ -40,6 +41,7 @@ export function MessageMenu({
   state, conversation, currentUserId, users, saved, onClose, onReply, onEdit, onDelete, onReact, onPin, onSave,
 }: MessageMenuProps) {
   const { t } = useLocale()
+  const confirm = useConfirm()
   const [panel, setPanel] = useState<Panel>('menu')
   // Captured once, when the menu opens: are edit and delete still allowed?
   const [openedAt] = useState(() => Date.now())
@@ -88,7 +90,9 @@ export function MessageMenu({
       label: t.msg.delete,
       danger: true,
       icon: <Trash2 {...icon} />,
-      onSelect: () => window.confirm(t.msg.deleteConfirm) && onDelete(message),
+      onSelect: () =>
+        void confirm({ message: t.msg.deleteConfirm, confirmLabel: t.msg.delete, danger: true })
+          .then((ok) => ok && onDelete(message)),
     })
   }
   if (!own) {

@@ -1,4 +1,5 @@
 import { Bell, BellOff, LogOut, MailCheck, MailWarning, MoreHorizontal, Pin, PinOff, Trash2 } from 'lucide-react'
+import { useConfirm } from '@/components/ui/confirm'
 import { useRef, useState, type KeyboardEvent, type Ref } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
@@ -31,6 +32,7 @@ export function ConversationRow({
   conversation, title, peer, lastMessage, lastSender, currentUserId, selected, tabIndex, onSelect, onAction, ref,
 }: ConversationRowProps) {
   const { t, fmt, lang } = useLocale()
+  const confirm = useConfirm()
   const rowRef = useRef<HTMLDivElement | null>(null)
   const [menu, setMenu] = useState<MenuAnchor | null>(null)
 
@@ -56,7 +58,9 @@ export function ConversationRow({
       label: t.menu.delete,
       icon: <Trash2 {...ICON} />,
       danger: true,
-      onSelect: () => window.confirm(t.menu.deleteConfirm(title)) && onAction('delete'),
+      onSelect: () =>
+        void confirm({ message: t.menu.deleteConfirm(title), confirmLabel: t.menu.delete, danger: true })
+          .then((ok) => ok && onAction('delete')),
     },
   ]
   if (conversation.isGroup) {
@@ -65,7 +69,9 @@ export function ConversationRow({
       label: t.menu.leave,
       icon: <LogOut {...ICON} className="rtl:-scale-x-100" />,
       danger: true,
-      onSelect: () => window.confirm(t.menu.leaveConfirm(title)) && onAction('leave'),
+      onSelect: () =>
+        void confirm({ message: t.menu.leaveConfirm(title), confirmLabel: t.menu.leave, danger: true })
+          .then((ok) => ok && onAction('leave')),
     })
   }
 

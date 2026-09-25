@@ -1,4 +1,5 @@
 import { Ban } from 'lucide-react'
+import { useConfirm } from '@/components/ui/confirm'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
@@ -8,13 +9,17 @@ import { useBlockedUsers, useSetBlocked } from './queries'
 /** "Block Sara" / "Unblock Sara", for a one-to-one chat's info panel. */
 export function BlockButton({ user }: { user: User }) {
   const { t } = useLocale()
+  const confirm = useConfirm()
   const blocked = useBlockedUsers()
   const setBlocked = useSetBlocked()
   const isBlocked = blocked.data?.some((u) => u.id === user.id) ?? false
 
   function toggle() {
     if (isBlocked) setBlocked.mutate({ userId: user.id, blocked: false })
-    else if (window.confirm(t.block.confirm(user.name))) setBlocked.mutate({ userId: user.id, blocked: true })
+    else {
+      void confirm({ message: t.block.confirm(user.name), confirmLabel: t.block.block(user.name), danger: true })
+        .then((ok) => ok && setBlocked.mutate({ userId: user.id, blocked: true }))
+    }
   }
 
   return (

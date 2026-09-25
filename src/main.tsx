@@ -3,8 +3,9 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import { AppCrashed } from './components/AppCrashed.tsx'
+import { ConfirmProvider } from './components/ui/ConfirmProvider.tsx'
 import { ErrorBoundary } from './components/ui/ErrorBoundary.tsx'
-import { LocaleProvider } from './lib/i18n.tsx'
+import { LocaleProvider } from './lib/i18n/LocaleProvider.tsx'
 import { registerMessageMutations } from './features/messages/queries.ts'
 import { queryClient } from './lib/queryClient.ts'
 import { startErrorMonitoring } from './lib/monitoring.ts'
@@ -24,7 +25,9 @@ createRoot(document.getElementById('root')!).render(
     >
       <LocaleProvider>
         <ErrorBoundary fallback={<AppCrashed />}>
-          <App />
+          <ConfirmProvider>
+            <App />
+          </ConfirmProvider>
         </ErrorBoundary>
       </LocaleProvider>
     </PersistQueryClientProvider>

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useConfirm } from '@/components/ui/confirm'
 import {
   Camera, Check, CircleAlert, Copy, Flag, Link2, LogOut, MoreHorizontal, Pencil, RefreshCw, Search, Shield, Trash2, UserMinus,
   UserPlus, X,
@@ -34,6 +35,7 @@ interface ConversationDetailsProps {
 /** The "chat info" panel: shared media and files, wallpaper, and group settings. */
 export function ConversationDetails({ conversation, title, me, onClose, onOpenMedia, onAction, className }: ConversationDetailsProps) {
   const { t, fmt } = useLocale()
+  const confirm = useConfirm()
   const [editing, setEditing] = useState(false)
   const [reporting, setReporting] = useState(false)
   const peer = conversation.isGroup ? undefined : conversation.members.find((m) => m.id !== me.id)
@@ -104,7 +106,10 @@ export function ConversationDetails({ conversation, title, me, onClose, onOpenMe
             <Button
               variant="ghost"
               className="w-full justify-start text-danger hover:text-danger"
-              onClick={() => window.confirm(t.menu.leaveConfirm(title)) && onAction('leave')}
+              onClick={() =>
+                void confirm({ message: t.menu.leaveConfirm(title), confirmLabel: t.menu.leave, danger: true })
+                  .then((ok) => ok && onAction('leave'))
+              }
               icon={<LogOut size={18} strokeWidth={1.75} className="rtl:-scale-x-100" aria-hidden />}
             >
               {t.menu.leave}
@@ -385,6 +390,7 @@ function GroupEditor({ conversation, onDone }: { conversation: Conversation; onD
 
 function Members({ conversation, me, isAdmin }: { conversation: Conversation; me: User; isAdmin: boolean }) {
   const { t, fmt } = useLocale()
+  const confirm = useConfirm()
   const admin = useGroupAdmin(conversation.id)
   const [adding, setAdding] = useState(false)
   const [menu, setMenu] = useState<{ anchor: MenuAnchor; member: Member } | null>(null)
@@ -445,7 +451,11 @@ function Members({ conversation, me, isAdmin }: { conversation: Conversation; me
               label: t.details.removeFromGroup,
               danger: true,
               icon: <UserMinus size={18} strokeWidth={1.75} />,
-              onSelect: () => window.confirm(t.details.removeConfirm(menu.member.name)) && admin.remove.mutate(menu.member.id),
+              onSelect: () => {
+                const member = menu.member
+                void confirm({ message: t.details.removeConfirm(member.name), confirmLabel: t.details.removeFromGroup, danger: true })
+                  .then((ok) => ok && admin.remove.mutate(member.id))
+              },
             },
           ]}
         />

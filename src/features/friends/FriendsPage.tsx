@@ -1,4 +1,5 @@
 import { ArrowLeft, Check, CircleAlert, MessageCircle, Search, UserMinus, UserPlus, X } from 'lucide-react'
+import { useConfirm } from '@/components/ui/confirm'
 import { useState, type ReactNode } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
@@ -22,6 +23,7 @@ interface FriendsPageProps {
 
 export function FriendsPage({ currentUserId, onBack, onMessage, messagingUserId }: FriendsPageProps) {
   const { t, lang } = useLocale()
+  const confirm = useConfirm()
   const friendships = useFriendships()
   const action = useFriendAction()
   const list = friendships.data ?? []
@@ -56,7 +58,8 @@ export function FriendsPage({ currentUserId, onBack, onMessage, messagingUserId 
             label={`${t.friends.remove}: ${user.name}`}
             disabled={busy}
             onClick={() => {
-              if (window.confirm(t.friends.removeConfirm(user.name))) action.mutate({ type: 'remove', user })
+              void confirm({ message: t.friends.removeConfirm(user.name), confirmLabel: t.friends.remove, danger: true })
+                .then((ok) => ok && action.mutate({ type: 'remove', user }))
             }}
           >
             <UserMinus size={16} strokeWidth={1.75} />
