@@ -1,7 +1,7 @@
 import { ArrowLeft, PanelRight, WifiOff } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
-import { IconButton } from '@/components/ui/Button'
+import { Button, IconButton } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
 import { wallpaperStyle } from '@/lib/wallpapers'
 import { useLocale } from '@/lib/i18n'
@@ -33,11 +33,15 @@ interface ChatPaneProps {
   onLoadOlder?: () => void
   /** Replaces the thread while messages load or fail. */
   threadPlaceholder?: ReactNode
+  /** A blocked one-to-one chat shows a notice instead of the message box. */
+  blocked?: 'byMe' | 'byThem'
+  onUnblock?: () => void
 }
 
 export function ChatPane({
   conversation, title, peer, messages, users, currentUserId, onBack, onSend, onRetry,
   hasOlder, loadingOlder, onLoadOlder, threadPlaceholder, onTyping, connection, onToggleDetails, detailsOpen,
+  blocked, onUnblock,
 }: ChatPaneProps) {
   const { t, fmt, lang } = useLocale()
   const [viewing, setViewing] = useState<string | null>(null)
@@ -112,13 +116,27 @@ export function ChatPane({
       )}
 
       <div className="shrink-0 px-3 pt-1 pb-3 md:px-5 md:pb-5">
-        <Composer
-          key={conversation.id}
-          conversationId={conversation.id}
-          recipientName={title}
-          onSend={onSend}
-          onTyping={onTyping}
-        />
+        {blocked ? (
+          <div
+            role="status"
+            className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-3xl bg-surface-raised px-4 py-3 text-center text-body text-ink-muted ring-1 ring-line"
+          >
+            <span dir="auto">{blocked === 'byMe' ? t.block.youBlocked(title) : t.block.cantReply}</span>
+            {blocked === 'byMe' && onUnblock && (
+              <Button variant="secondary" size="sm" onClick={onUnblock}>
+                {t.privacySettings.unblock}
+              </Button>
+            )}
+          </div>
+        ) : (
+          <Composer
+            key={conversation.id}
+            conversationId={conversation.id}
+            recipientName={title}
+            onSend={onSend}
+            onTyping={onTyping}
+          />
+        )}
       </div>
       </div>
 

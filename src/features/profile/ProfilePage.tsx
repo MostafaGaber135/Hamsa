@@ -4,6 +4,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { TextField } from '@/components/ui/TextField'
+import { PrivacySettings } from '@/features/privacy/PrivacySettings'
 import { useLocale } from '@/lib/i18n'
 import { PushServiceError, disablePush, enablePush, getPushStatus, type PushStatus } from '@/lib/push'
 import { useDebounced } from '@/lib/useDebounced'
@@ -45,6 +46,9 @@ export function ProfilePage({ user, email, hasPassword, onBack }: ProfilePagePro
             onSaved={flashDetailsSaved}
           />
           <NotificationsCard />
+          <Card title={t.privacySettings.title} description={t.privacySettings.description}>
+            <PrivacySettings userId={user.id} />
+          </Card>
           <PasswordCard hasPassword={hasPassword} />
         </div>
       </div>

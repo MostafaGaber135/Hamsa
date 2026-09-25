@@ -16,6 +16,7 @@ import { ChatPane } from '@/features/messages/ChatPane'
 import type { Draft } from '@/features/messages/Composer'
 import { MediaViewer } from '@/features/messages/MediaViewer'
 import { useMessages, useSendMessage } from '@/features/messages/queries'
+import { useBlockState, useSetBlocked } from '@/features/privacy/queries'
 import { useLiveUpdates, type Connection } from '@/features/realtime/useLiveUpdates'
 import { usePresence } from '@/features/realtime/usePresence'
 import { useTyping } from '@/features/realtime/useTyping'
@@ -310,6 +311,8 @@ function OpenConversation({
   const messagesQuery = useMessages(conversation.id, conversation.clearedAt)
   const send = useSendMessage(conversation.id)
   const peer = conversation.isGroup ? undefined : conversation.members.find((m) => m.id !== me.id)
+  const blocked = useBlockState(conversation.id, peer?.id)
+  const setBlocked = useSetBlocked()
 
   const messages = useMemo(
     () => (messagesQuery.data ?? []).map((m) => withStatus(m, me.id, conversation.members)),
@@ -365,6 +368,8 @@ function OpenConversation({
       connection={connection}
       detailsOpen={detailsOpen}
       onToggleDetails={onToggleDetails}
+      blocked={blocked}
+      onUnblock={peer && (() => setBlocked.mutate({ userId: peer.id, blocked: false }))}
     />
   )
 }

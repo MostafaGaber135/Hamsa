@@ -56,6 +56,8 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 **People**
 - One-to-one chats and groups, with group photo and name, admins, and adding or removing members
 - Friends: search people, send, accept, decline and cancel requests
+- Block people from a chat's info panel: they can't message you, start a chat or send a friend request; unblock any time from your profile
+- Choose who can add you to groups: everyone, or only your friends
 - Conversation menu: pin, mute, mark as read / unread, delete chat (for you only), leave group — via the ⋯ button, right-click, or Shift + F10
 
 **Account**
@@ -132,6 +134,7 @@ All access rules live in the database, not in the frontend, so they hold even if
 - **Private Realtime channels.** Typing channels (`typing:<conversation-id>`) are restricted to that conversation's members by policies on `realtime.messages`.
 - **Private file storage.** Chat images, voice notes and documents are only reachable through short-lived signed URLs, and only members can upload to a conversation's folder.
 - **Admin-only group changes.** Renaming, the group photo and membership changes are checked in the database, not just hidden in the UI. A group can never lose its last admin.
+- **Blocking is enforced by the database.** The messages policy refuses writes into a blocked one-to-one chat, and new chats, friend requests and group invites check blocks and each person's group setting. Nobody can look up who blocked whom.
 - **Photos only from Hamsa's storage.** A profile or group photo must be a file in your own folder of this project's avatars bucket (or your Google photo), so nobody can plant a tracking image that logs who looked at it.
 - **Security headers.** `vercel.json` sets `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` and HSTS, plus a Content Security Policy (currently in report-only mode).
 
@@ -251,6 +254,7 @@ src/
 │   ├── messages/         Thread, message bubble, composer, emoji picker
 │   ├── friends/          Friends, requests, people search
 │   ├── profile/          Profile editing
+│   ├── privacy/          Blocking people, who can add you to groups
 │   ├── realtime/         Live updates, presence, typing
 │   └── legal/            Privacy policy
 ├── lib/                  Supabase client, i18n and dates, theme, image resizing
