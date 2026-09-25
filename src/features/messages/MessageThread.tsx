@@ -27,6 +27,13 @@ interface MessageThreadProps {
 /** How close to the bottom still counts as "reading the latest". */
 const NEAR_BOTTOM_PX = 120
 
+/**
+ * Older messages than the newest this many are skipped by the browser while off
+ * screen (content-visibility), so a long history loaded by scrolling up stays
+ * fast. The newest ones always render fully, so "jump to the latest" is exact.
+ */
+const ALWAYS_RENDERED = 60
+
 /** Consecutive messages from one sender on the same day form a run. */
 function runPosition(messages: Message[], i: number, sameDay: (a: string, b: string) => boolean): RunPosition {
   const m = messages[i]
@@ -138,6 +145,7 @@ export function MessageThread({
             const sender = users[m.senderId]
             const startsRun = position === 'single' || position === 'first'
             const endsRun = position === 'single' || position === 'last'
+            const offscreenOk = i < messages.length - ALWAYS_RENDERED
 
             return (
               <Fragment key={m.id}>
@@ -148,6 +156,7 @@ export function MessageThread({
                     !out && 'animate-rise',
                     out ? 'justify-end' : 'justify-start',
                     startsRun && !newDay ? 'mt-3' : 'mt-0.5',
+                    offscreenOk && '[contain-intrinsic-size:auto_64px] [content-visibility:auto]',
                   )}
                 >
                   {/* Avatar column beside the last bubble of a received run. */}

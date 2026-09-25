@@ -45,7 +45,7 @@ const content: Record<'en' | 'ar', { title: string; intro: string; updated: stri
         title: 'Where it is stored',
         body: [
           'Data is stored with Supabase, on servers in the European Union (Frankfurt). The app itself is hosted on Vercel.',
-          'Your browser keeps your sign-in session and your theme and language choices so you stay signed in and see Hamsa the way you left it. Hamsa uses no tracking or advertising cookies.',
+          'Your browser keeps your sign-in session and your theme and language choices so you stay signed in and see Hamsa the way you left it. It also keeps a copy of your chat list and recent messages, so Hamsa opens quickly; that copy is deleted when you sign out. Hamsa uses no tracking or advertising cookies.',
         ],
       },
       {
@@ -98,7 +98,7 @@ const content: Record<'en' | 'ar', { title: string; intro: string; updated: stri
         title: 'أين تُحفظ البيانات',
         body: [
           'تُحفظ البيانات لدى Supabase على خوادم داخل الاتحاد الأوروبي (فرانكفورت)، ويُستضاف التطبيق نفسه على Vercel.',
-          'يحتفظ متصفحك بجلسة تسجيل الدخول واختيارك للوضع واللغة، حتى تبقى مسجّلًا وتجد همسة كما تركتها. لا تستخدم همسة ملفات تعريف ارتباط للتتبّع أو الإعلانات.',
+          'يحتفظ متصفحك بجلسة تسجيل الدخول واختيارك للوضع واللغة، حتى تبقى مسجّلًا وتجد همسة كما تركتها. كما يحتفظ بنسخة من قائمة محادثاتك ورسائلك الأخيرة لتفتح همسة بسرعة، وتُحذف هذه النسخة عند تسجيل الخروج. لا تستخدم همسة ملفات تعريف ارتباط للتتبّع أو الإعلانات.',
         ],
       },
       {
