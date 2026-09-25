@@ -12,9 +12,12 @@ export type Route =
   | { name: 'profile' }
   | { name: 'share' }
   | { name: 'join'; code: string }
+  /** Someone's invite link: the friends page, searching for them. */
+  | { name: 'add'; username: string }
   | { name: 'login' }
   | { name: 'privacy' }
 
+const USERNAME = /^[a-z0-9_]{3,24}$/i
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export function parseRoute(pathname: string): Route {
@@ -24,6 +27,7 @@ export function parseRoute(pathname: string): Route {
   if (first === 'profile') return { name: 'profile' }
   if (first === 'share') return { name: 'share' }
   if (first === 'join' && second && /^[0-9a-f]{32}$/i.test(second)) return { name: 'join', code: second.toLowerCase() }
+  if (first === 'add' && second && USERNAME.test(second)) return { name: 'add', username: second.toLowerCase() }
   if (first === 'login') return { name: 'login' }
   if (first === 'privacy') return { name: 'privacy' }
   return { name: 'home' }
@@ -37,6 +41,8 @@ export function pathFor(route: Route): string {
       return `/c/${route.id}`
     case 'join':
       return `/join/${route.code}`
+    case 'add':
+      return `/add/${route.username}`
     default:
       return `/${route.name}`
   }

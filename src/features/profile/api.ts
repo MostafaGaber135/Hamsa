@@ -18,14 +18,11 @@ export async function updateProfile(userId: string, fields: { fullName: string; 
   if (error) throw error
 }
 
-export async function isUsernameAvailable(username: string, userId: string): Promise<boolean> {
-  const { count, error } = await supabase
-    .from('profiles')
-    .select('id', { count: 'exact', head: true })
-    .eq('username', username)
-    .neq('id', userId)
+/** Whether nobody else has this username (other people's profiles aren't readable, so the server checks). */
+export async function isUsernameAvailable(username: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('is_username_available', { name: username })
   if (error) throw error
-  return count === 0
+  return data
 }
 
 export function validateImage(file: File): 'tooBig' | 'wrongType' | null {

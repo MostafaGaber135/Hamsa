@@ -40,8 +40,15 @@ select pg_temp.as_user('22222222-2222-2222-2222-222222222222');
 select unblock_user('11111111-1111-1111-1111-111111111111');
 
 -- ---- Message requests ----
+-- New chats need a friendship now; this is one a stranger started before that rule.
+reset role;
+insert into conversations (is_group, created_by, direct_key)
+values (false, '55555555-5555-5555-5555-555555555555', '44444444-4444-4444-4444-444444444444:55555555-5555-5555-5555-555555555555')
+returning id as req \gset
+insert into conversation_participants (conversation_id, user_id) values
+  (:'req', '44444444-4444-4444-4444-444444444444'), (:'req', '55555555-5555-5555-5555-555555555555');
+set role authenticated;
 select pg_temp.as_user('55555555-5555-5555-5555-555555555555');
-select get_or_create_direct_conversation('44444444-4444-4444-4444-444444444444') as req \gset
 insert into messages (conversation_id, content) values (:'req', 'Hi, we haven''t met');
 select 'hana (who started it) sees a request: ' || is_request from get_my_conversations() where id = :'req';
 select 'a stranger sees gina''s last seen: ' || coalesce(m->>'last_seen_at', 'hidden')
@@ -95,6 +102,8 @@ update profiles set avatar_url = 'https://abc.supabase.co/storage/v1/object/publ
 select 'orphans: ' || string_agg(bucket_id || ':' || regexp_replace(name, '^[^/]+/', ''), ', ' order by bucket_id, name) from orphaned_files();
 
 -- ---- Deleting an account ----
+insert into friendships (requester_id, addressee_id, status)
+values ('55555555-5555-5555-5555-555555555555', '44444444-4444-4444-4444-444444444444', 'accepted');
 set role authenticated;
 select pg_temp.as_user('55555555-5555-5555-5555-555555555555');
 select create_group_conversation('Hana''s group', array['44444444-4444-4444-4444-444444444444']::uuid[]) as hgrp \gset

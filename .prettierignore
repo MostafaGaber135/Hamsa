@@ -3,6 +3,8 @@ dist/
 src/types/database.generated.ts
 supabase/schema.sql
 package-lock.json
+# Local Supabase CLI state
+supabase/.temp/
 # Prose and data: formatted by hand
 *.md
 *.sql

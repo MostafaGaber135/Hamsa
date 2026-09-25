@@ -336,7 +336,6 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           full_name: string
-          group_invites: string
           id: string
           last_seen_at: string
           presence_visibility: string
@@ -346,7 +345,6 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           full_name: string
-          group_invites?: string
           id: string
           last_seen_at?: string
           presence_visibility?: string
@@ -356,7 +354,6 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           full_name?: string
-          group_invites?: string
           id?: string
           last_seen_at?: string
           presence_visibility?: string
@@ -500,8 +497,10 @@ export type Database = {
         Args: { conv_id: string; member_ids: string[] }
         Returns: undefined
       }
+      are_friends: { Args: { a: string; b: string }; Returns: boolean }
       block_user: { Args: { target_id: string }; Returns: undefined }
       can_add_to_group: { Args: { member: string }; Returns: boolean }
+      can_see_profile: { Args: { target: string }; Returns: boolean }
       can_send_to: { Args: { conv_id: string }; Returns: boolean }
       clear_conversation: { Args: { conv_id: string }; Returns: undefined }
       create_group_conversation: {
@@ -597,6 +596,7 @@ export type Database = {
         Returns: boolean
       }
       is_request_for_me: { Args: { conv_id: string }; Returns: boolean }
+      is_username_available: { Args: { name: string }; Returns: boolean }
       is_valid_attachment: { Args: { a: Json; kind: string }; Returns: boolean }
       join_group_by_invite: { Args: { code: string }; Returns: string }
       leave_conversation: { Args: { conv_id: string }; Returns: undefined }
@@ -610,6 +610,16 @@ export type Database = {
         Returns: {
           bucket_id: string
           name: string
+        }[]
+      }
+      people_you_may_know: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          full_name: string
+          id: string
+          mutual_friends: number
+          username: string
         }[]
       }
       pin_message: {
@@ -656,6 +666,15 @@ export type Database = {
           created_at: string
           id: string
           sender_id: string
+        }[]
+      }
+      search_people: {
+        Args: { handle: string }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          id: string
+          username: string
         }[]
       }
       send_friend_request: { Args: { target_id: string }; Returns: string }

@@ -65,10 +65,10 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 
 **People**
 - One-to-one chats and groups, with group photo and name, admins, and adding or removing members
-- Friends: search people, send, accept, decline and cancel requests
+- Friends only: you chat with, and make groups with, your friends. Find people by the start of their username (3+ letters),
+  your personal invite link (`/add/<username>`), or "People you may know" (friends of your friends); send, accept, decline and cancel requests
 - Block people from a chat's info panel: they can't message you, start a chat or send a friend request; unblock any time from your profile
-- Choose who can add you to groups: everyone, or only your friends
-- Message requests: a chat a stranger starts waits in its own tab, without notifications or read receipts, until you accept, reply, delete or block
+- Message requests: a chat a stranger started before chats became friends-only waits in its own tab, without notifications or read receipts, until you accept, reply, delete or block
 - Delete your account from your profile, permanently
 - Conversation menu: pin, mute, mark as read / unread, delete chat (for you only), leave group — via the ⋯ button, right-click, or Shift + F10
 
@@ -85,7 +85,7 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 - Responsive: three-pane desktop layout, two-screen mobile flow
 - Respects `prefers-reduced-motion`
 - A "Reconnecting…" banner when the connection drops, then catches up on anything missed
-- Real URLs (`/c/<chat>`, `/friends`, `/profile`): the Back button, including Android's, steps back through screens instead of leaving the app
+- Real URLs (`/c/<chat>`, `/friends`, `/add/<username>`, `/profile`): the Back button, including Android's, steps back through screens instead of leaving the app
 - Installable app that opens offline, with an update prompt when a new version is ready
 - An outbox: messages sent while offline wait and go out as soon as you're back (text messages even if you close Hamsa)
 - Unread count on the installed app's icon, "Share to Hamsa" from your phone's gallery, and "Mark as read" / "Reply" on notifications
@@ -157,6 +157,7 @@ All access rules live in the database, not in the frontend, so they hold even if
 - **Row Level Security on every table.** You can only read conversations you're a member of, and only send messages as yourself. One `is_member()` function guards messages, participants and image files.
 - **No recursive policies.** `is_member()` is `security definer`, which avoids the classic infinite-recursion bug when a membership table's policy checks membership.
 - **Multi-table writes go through functions.** Creating a conversation and adding its members happens in one transaction.
+- **Nobody can list Hamsa's users.** A profile is readable only by its owner, their friends and requests, and people who share a chat with them. Search is a function that needs at least 3 characters of the start of a username and returns at most 20 people; new one-to-one chats and group members must be friends, checked in the database.
 - **Column-level privileges.** On your own profile you can edit only your name, username and photo — never your id or timestamps.
 - **The server owns time.** A trigger sets `created_at`, so messages can't be back-dated.
 - **Attachments are validated twice.** The database rejects attachments with the wrong types, a location without valid coordinates, or more than 4 KB of JSON. The app also checks every field it reads, and each message renders inside its own error boundary, so one bad message can never blank out a chat.
@@ -170,7 +171,7 @@ All access rules live in the database, not in the frontend, so they hold even if
 - **Reports can't be read from the app.** They're kept, with the reported text, for whoever runs Hamsa to review in the dashboard.
 - **Link previews never reveal readers.** The page is fetched by an Edge Function (public web addresses only), cached, and shown as text.
 - **Calls are peer to peer.** Audio and video go directly between the two browsers, encrypted by WebRTC; only the signalling uses the chat's private channel.
-- **Blocking is enforced by the database.** The messages policy refuses writes into a blocked one-to-one chat, and new chats, friend requests and group invites check blocks and each person's group setting. Nobody can look up who blocked whom.
+- **Blocking is enforced by the database.** The messages policy refuses writes into a blocked one-to-one chat, and new chats, friend requests, searches and group invites check blocks. Nobody can look up who blocked whom.
 - **Photos only from Hamsa's storage.** A profile or group photo must be a file in your own folder of this project's avatars bucket (or your Google photo), so nobody can plant a tracking image that logs who looked at it.
 - **Security headers.** `vercel.json` sets `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` and HSTS, plus a Content Security Policy (currently in report-only mode).
 
@@ -328,11 +329,11 @@ src/
 │   ├── chat/             The signed-in app shell
 │   ├── conversations/    Sidebar, conversation list and menu, new chat dialog
 │   ├── messages/         Thread, message bubble, composer, emoji and sticker picker, voice recorder
-│   ├── friends/          Friends, requests, people search
+│   ├── friends/          Friends, requests, username search, invite link, suggestions
 │   ├── landing/          The public home page
 │   ├── share/            "Share to Hamsa" from other apps
 │   ├── profile/          Profile editing
-│   ├── privacy/          Blocking people, who can add you to groups
+│   ├── privacy/          Blocking people, online status
 │   ├── realtime/         Live updates, presence, typing
 │   └── legal/            Privacy policy
 ├── lib/                  Supabase client, router, i18n (en.ts, ar.ts loaded on demand), theme, cache, monitoring

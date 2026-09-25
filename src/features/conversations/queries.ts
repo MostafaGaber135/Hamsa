@@ -7,7 +7,6 @@ import {
   markConversationRead,
   removeGroupMember,
   runConversationAction,
-  searchProfiles,
   setGroupDescription,
   setGroupInvite,
   setMemberRole,
@@ -19,7 +18,6 @@ import {
 export const conversationKeys = {
   all: ['conversations'] as const,
   profile: (id: string) => ['profile', id] as const,
-  search: (q: string) => ['profiles', 'search', q] as const,
 }
 
 export function useConversations() {
@@ -28,15 +26,6 @@ export function useConversations() {
 
 export function useProfile(userId: string) {
   return useQuery({ queryKey: conversationKeys.profile(userId), queryFn: () => fetchProfile(userId) })
-}
-
-export function useProfileSearch(query: string, excludeId: string) {
-  return useQuery({
-    queryKey: conversationKeys.search(query),
-    queryFn: () => searchProfiles(query, excludeId),
-    enabled: query.trim().length > 0,
-    staleTime: 60_000,
-  })
 }
 
 /** Clears the badge immediately, then tells the server. */

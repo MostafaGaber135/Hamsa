@@ -5,17 +5,20 @@ import { navigate, useRoute } from '@/lib/router'
 type ChatView = 'chat' | 'friends' | 'profile' | 'share' | 'join'
 
 /**
- * What's on screen, from the URL (/c/<id>, /friends, /profile, /share, /join/<code>),
+ * What's on screen, from the URL (/c/<id>, /friends, /add/<username>, /profile, /share, /join/<code>),
  * and the ways to move around: open a chat, jump to a message, close the chat.
  * Also opens the chat of a notification you clicked.
  */
 export function useChatNavigation() {
   const route = useRoute()
   const selectedId = route.name === 'chat' ? route.id : null
+  // An invite link (/add/<username>) is the friends page, searching for that person.
   const view: ChatView =
-    route.name === 'friends' || route.name === 'profile' || route.name === 'share' || route.name === 'join'
-      ? route.name
-      : 'chat'
+    route.name === 'add'
+      ? 'friends'
+      : route.name === 'friends' || route.name === 'profile' || route.name === 'share' || route.name === 'join'
+        ? route.name
+        : 'chat'
   const [detailsOpen, setDetailsOpen] = useState(false)
   // A message to scroll to once its chat is open (from search).
   const [jump, setJump] = useState<{ conversationId: string; target: JumpTarget } | null>(null)
