@@ -23,3 +23,6 @@ create function realtime.topic() returns text language sql stable as $$ select c
 grant usage on schema realtime to authenticated, anon;
 grant select, insert on realtime.messages to authenticated, anon;
 grant usage on sequence realtime.messages_id_seq to authenticated, anon;
+-- Broadcast from Database: records what would be sent, so tests can check it.
+create function realtime.send(payload jsonb, event text, topic text, private boolean default true) returns void language sql as $$
+  insert into realtime.messages (topic, extension, payload) values ($3, 'broadcast', jsonb_build_object('event', $2, 'payload', $1)) $$;

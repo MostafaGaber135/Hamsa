@@ -1,6 +1,6 @@
 import { ArrowRight, CircleAlert, FileText, Image as ImageIcon, MapPin, Mic, Paperclip, Smile, Trash2, X } from 'lucide-react'
 import {
-  useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent,
+  lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent,
 } from 'react'
 import { IconButton, focusRing } from '@/components/ui/Button'
 import { Menu, type MenuAnchor } from '@/components/ui/Menu'
@@ -11,8 +11,10 @@ import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
 import type { Attachment, MessageKind } from '@/types/chat'
 import { MAX_FILE_BYTES, MAX_IMAGE_BYTES, kindForFile } from './api'
-import { ExpressionPicker } from './ExpressionPicker'
 import { useVoiceRecorder } from './useVoiceRecorder'
+
+// The emoji list is large: it loads the first time you open the picker.
+const ExpressionPicker = lazy(() => import('./ExpressionPicker').then((m) => ({ default: m.ExpressionPicker })))
 
 const MAX_LINES = 6
 
@@ -338,17 +340,19 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
                 <Smile size={20} strokeWidth={1.75} />
               </IconButton>
               {pickerOpen && (
-                <ExpressionPicker
-                  onEmoji={insertEmoji}
-                  onSticker={(id) => {
-                    onSend({ kind: 'sticker', content: id })
-                    setPickerOpen(false)
-                  }}
-                  onClose={() => {
-                    setPickerOpen(false)
-                    fieldRef.current?.focus()
-                  }}
-                />
+                <Suspense fallback={null}>
+                  <ExpressionPicker
+                    onEmoji={insertEmoji}
+                    onSticker={(id) => {
+                      onSend({ kind: 'sticker', content: id })
+                      setPickerOpen(false)
+                    }}
+                    onClose={() => {
+                      setPickerOpen(false)
+                      fieldRef.current?.focus()
+                    }}
+                  />
+                </Suspense>
               )}
             </span>
 

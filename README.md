@@ -84,9 +84,9 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 |---|---|
 | **Frontend** | React 19, TypeScript, Vite |
 | **Styling** | Tailwind CSS v4 with CSS-variable design tokens, Lucide icons |
-| **Server state** | TanStack Query (caching, infinite queries, optimistic updates) |
+| **Server state** | TanStack Query (caching, infinite queries, optimistic updates), saved to IndexedDB |
 | **Backend** | Supabase: PostgreSQL, Auth, Storage, Realtime |
-| **Realtime** | Postgres Changes (messages, receipts), Presence (online), Broadcast (typing) |
+| **Realtime** | Broadcast from Database (one private channel per person), Presence (online) and Broadcast (typing) per conversation |
 | **Security** | Row Level Security on every table, private Realtime channels, private storage |
 | **Hosting** | Vercel (frontend), Supabase (backend, EU region) |
 
@@ -100,6 +100,7 @@ flowchart LR
     UI[UI components] --> Q[TanStack Query cache]
     UI --> RT[Realtime hooks]
     RT -- patches --> Q
+    Q -. saved .-> IDB[(IndexedDB)]
   end
 
   subgraph Supabase
@@ -111,15 +112,26 @@ flowchart LR
 
   Q -- REST / RPC --> DB
   Q -- signed URLs --> ST
-  RT -- Postgres Changes --> RL
-  RT -- Presence / Broadcast --> RL
-  RL -. reads with RLS .-> DB
+  DB -- triggers: realtime.send --> RL
+  RL -- "user:&lt;id&gt; (your updates)" --> RT
+  RT -- "typing:&lt;chat&gt; (presence, typing)" --> RL
   UI --> Auth
 ```
 
 The UI reads everything through TanStack Query. Realtime events don't trigger refetches: they patch
 the cache directly (a new message is inserted into the right page, a read receipt updates one member),
 so the screen updates instantly with no extra requests.
+
+**Live updates scale with people, not tables.** Database triggers send each change only to the people it
+concerns, on their own private channel `user:<id>` (Broadcast from Database). Nothing listens to whole
+tables, so the server never checks every new row against every connected user, and a new message no longer
+makes every member reload their chat list. Typing and online status use one channel per conversation, for
+your 50 most recent chats.
+
+**Fast start, small download.** The cache is saved to IndexedDB (never messages still sending, wiped at
+sign-out or when another account signs in), so Hamsa opens on your chats and then refreshes. Each screen
+and panel (sign-in, profile, friends, chat info, the media viewer, the emoji picker) is its own chunk,
+loaded on first use. Long histories stay smooth: older messages are skipped by the browser while off screen.
 
 ---
 

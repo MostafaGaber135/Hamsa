@@ -1,5 +1,5 @@
 import { ArrowLeft, PanelRight, WifiOff } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { lazy, Suspense, useState, type ReactNode } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button, IconButton } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
@@ -8,9 +8,10 @@ import { useLocale } from '@/lib/i18n'
 import type { Conversation, Message, User } from '@/types/chat'
 import { Composer, type Draft } from './Composer'
 import { isViewable } from './media'
-import { MediaViewer } from './MediaViewer'
 import { MessageThread } from './MessageThread'
 import { TypingInline } from './TypingIndicator'
+
+const MediaViewer = lazy(() => import('./MediaViewer').then((m) => ({ default: m.MediaViewer })))
 
 interface ChatPaneProps {
   conversation: Conversation
@@ -159,7 +160,9 @@ export function ChatPane({
       </div>
 
       {viewing && (
-        <MediaViewer items={viewable} startId={viewing} users={users} onClose={() => setViewing(null)} />
+        <Suspense fallback={null}>
+          <MediaViewer items={viewable} startId={viewing} users={users} onClose={() => setViewing(null)} />
+        </Suspense>
       )}
     </>
   )

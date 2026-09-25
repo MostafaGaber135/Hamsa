@@ -1,20 +1,15 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import type { ConversationItem } from '@/features/conversations/ConversationList'
 import { openDirectConversation } from '@/features/conversations/api'
-import { ConversationDetails } from '@/features/conversations/ConversationDetails'
 import { EmptyState } from '@/features/conversations/EmptyState'
-import { NewChatDialog } from '@/features/conversations/NewChatDialog'
 import { conversationKeys, useConversationAction, useConversations, useMarkRead, useProfile } from '@/features/conversations/queries'
-import { FriendsPage } from '@/features/friends/FriendsPage'
-import { ProfilePage } from '@/features/profile/ProfilePage'
 import { useFriendships } from '@/features/friends/queries'
 import { Sidebar, type Filter } from '@/features/conversations/Sidebar'
 import { ChatPane } from '@/features/messages/ChatPane'
 import type { Draft } from '@/features/messages/Composer'
-import { MediaViewer } from '@/features/messages/MediaViewer'
 import { useMessages, useSendMessage } from '@/features/messages/queries'
 import { useBlockState, usePrivacySettings, useSetBlocked } from '@/features/privacy/queries'
 import { useLiveUpdates, type Connection } from '@/features/realtime/useLiveUpdates'
@@ -27,6 +22,17 @@ import { detachPush, resyncPush } from '@/lib/push'
 import { supabase } from '@/lib/supabase'
 import type { Theme } from '@/lib/theme'
 import type { CachedMessage, Conversation, ConversationAction, Message, User } from '@/types/chat'
+
+// Screens and panels you open now and then load on first use, not with the app.
+const ConversationDetails = lazy(() =>
+  import('@/features/conversations/ConversationDetails').then((m) => ({ default: m.ConversationDetails })),
+)
+const NewChatDialog = lazy(() =>
+  import('@/features/conversations/NewChatDialog').then((m) => ({ default: m.NewChatDialog })),
+)
+const FriendsPage = lazy(() => import('@/features/friends/FriendsPage').then((m) => ({ default: m.FriendsPage })))
+const ProfilePage = lazy(() => import('@/features/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })))
+const MediaViewer = lazy(() => import('@/features/messages/MediaViewer').then((m) => ({ default: m.MediaViewer })))
 
 interface ChatAppProps {
   userId: string
@@ -99,7 +105,12 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
     openConversationId: view === 'chat' ? selectedId : null,
     onReadWhileOpen: selectedIsRequest ? ignoreRead : markReadMutate,
   })
-  const conversationIds = useMemo(() => (rawConversations ?? []).map((c) => c.id), [rawConversations])
+  // Typing and online status for your most recent chats (and the open one): one
+  // Realtime channel each, so a long chat list can't exhaust the connection's channels.
+  const conversationIds = useMemo(() => {
+    const recent = (rawConversations ?? []).slice(0, MAX_LIVE_CONVERSATIONS).map((c) => c.id)
+    return selectedId && !recent.includes(selectedId) ? [...recent, selectedId] : recent
+  }, [rawConversations, selectedId])
   const requestIds = useMemo(() => (rawConversations ?? []).filter((c) => c.isRequest).map((c) => c.id), [rawConversations])
   // You appear online only once your setting is known, only if it allows it,
   // and never in a message request you haven't accepted.
@@ -232,6 +243,7 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
           mainOpen ? 'flex' : 'hidden md:flex',
         )}
       >
+        <Suspense fallback={<CenteredLoading label={t.loading} />}>
         {view === 'profile' ? (
           <ProfilePage
             user={me}
@@ -269,9 +281,11 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
         ) : (
           <EmptyState onNewChat={() => setNewChatOpen(true)} />
         )}
+        </Suspense>
       </main>
 
       {/* Chat info: a third column on wide screens, full screen on smaller ones. */}
+      <Suspense fallback={null}>
       {view === 'chat' && selected && detailsOpen && (
         <ConversationDetails
           key={selected.id}
@@ -289,18 +303,25 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
       )}
       {viewer && <MediaViewer items={viewer.items} startId={viewer.startId} users={users} onClose={() => setViewer(null)} />}
 
-      <NewChatDialog
-        open={newChatOpen}
-        currentUserId={me.id}
-        onClose={() => setNewChatOpen(false)}
-        onCreated={(id) => {
-          setNewChatOpen(false)
-          openConversation(id)
-        }}
-      />
+      {/* Mounted only while open, so its code loads the first time you start a chat. */}
+      {newChatOpen && (
+        <NewChatDialog
+          open
+          currentUserId={me.id}
+          onClose={() => setNewChatOpen(false)}
+          onCreated={(id) => {
+            setNewChatOpen(false)
+            openConversation(id)
+          }}
+        />
+      )}
+      </Suspense>
     </div>
   )
 }
+
+/** How many chats get live typing and online status (plus the open one). */
+const MAX_LIVE_CONVERSATIONS = 50
 
 /** Used while a message request is open: reading it doesn't mark it read. */
 const ignoreRead = () => undefined

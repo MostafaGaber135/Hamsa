@@ -2,7 +2,7 @@ import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData, type 
 import type { CachedMessage, Conversation } from '@/types/chat'
 import { privacyKeys } from '@/features/privacy/queries'
 import { conversationKeys } from '../conversations/queries'
-import { PAGE_SIZE, fetchMessagePage, insertMessage } from './api'
+import { PAGE_SIZE, fetchMessagePage, insertMessage, withMediaUrls } from './api'
 
 type Pages = InfiniteData<CachedMessage[], string | undefined>
 
@@ -85,8 +85,22 @@ export function useSendMessage(conversationId: string) {
       bumpConversation(qc, optimistic)
     },
 
-    onSuccess: (_data, message) =>
-      patchMessage(qc, conversationId, message.id, { pending: undefined, file: undefined }),
+    onSuccess: async (saved, message) => {
+      patchMessage(qc, conversationId, message.id, { pending: undefined, file: undefined })
+      if (!message.file) return
+      // Swap the local preview for the uploaded file, then free the preview's memory.
+      const [uploaded] = await withMediaUrls([
+        { ...message, ...saved, imageUrl: undefined, fileUrl: undefined },
+      ]).catch(() => [undefined])
+      if (!uploaded) return
+      patchMessage(qc, conversationId, message.id, {
+        imagePath: uploaded.imagePath,
+        attachment: uploaded.attachment,
+        imageUrl: uploaded.imageUrl,
+        fileUrl: uploaded.fileUrl,
+      })
+      for (const url of [message.imageUrl, message.fileUrl]) if (url?.startsWith('blob:')) URL.revokeObjectURL(url)
+    },
 
     // Failed messages stay where they are, marked failed, with a retry button.
     // The other person may have just blocked you: check, so the chat can say so.

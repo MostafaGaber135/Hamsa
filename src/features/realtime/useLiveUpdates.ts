@@ -10,9 +10,7 @@ import type { Conversation } from '@/types/chat'
 
 export type Connection = 'connecting' | 'live' | 'lost'
 
-type MessageRow = MessageRowLike
-
-interface ParticipantRow {
+interface ReadEvent {
   conversation_id: string
   user_id: string
   last_read_at: string
@@ -27,9 +25,10 @@ interface Options {
 }
 
 /**
- * Keeps the cache in sync with the database through Realtime Postgres Changes:
- * new messages, read receipts, conversations you were added to, and friend requests.
- * Realtime applies the tables' RLS policies, so you only receive rows you're allowed to see.
+ * Keeps the cache in sync with the database through your own private channel
+ * ("user:<id>"). Database triggers send only what concerns you (Broadcast from
+ * Database): new messages, read receipts, "your chat list changed", "your friends
+ * changed". Events patch the cache directly instead of refetching.
  */
 export function useLiveUpdates({ userId, openConversationId, onReadWhileOpen }: Options) {
   const qc = useQueryClient()
@@ -48,7 +47,7 @@ export function useLiveUpdates({ userId, openConversationId, onReadWhileOpen }: 
     // Removing the channel reports CLOSED; ignore anything after cleanup.
     let disposed = false
 
-    async function onMessage(row: MessageRow) {
+    async function onMessage(row: MessageRowLike) {
       const [message] = await withMediaUrls([toMessage(row)]).catch(() => [toMessage(row)])
       const conversationId = message.conversationId
       const list = qc.getQueryData<Conversation[]>(conversationKeys.all)
@@ -74,36 +73,31 @@ export function useLiveUpdates({ userId, openConversationId, onReadWhileOpen }: 
     }
 
     // Someone read the conversation: move their read marker so your ticks turn to "read".
-    function onParticipantUpdate(row: ParticipantRow) {
-      if (row.user_id === userId) return
+    function onRead(event: ReadEvent) {
       qc.setQueryData<Conversation[]>(conversationKeys.all, (cs) =>
         cs?.map((c) =>
-          c.id === row.conversation_id
-            ? { ...c, members: c.members.map((m) => (m.id === row.user_id ? { ...m, lastReadAt: row.last_read_at } : m)) }
+          c.id === event.conversation_id
+            ? {
+                ...c,
+                members: c.members.map((m) => (m.id === event.user_id ? { ...m, lastReadAt: event.last_read_at } : m)),
+              }
             : c,
         ),
       )
     }
 
-    const refreshConversations = () => qc.invalidateQueries({ queryKey: conversationKeys.all })
-
     const channel = supabase
-      .channel(`db:${userId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, ({ new: row }) =>
-        onMessage(row as MessageRow),
-      )
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'conversation_participants' }, ({ new: row }) =>
-        onParticipantUpdate(row as ParticipantRow),
-      )
-      // Added to a group, someone left, a new 1:1 conversation with you.
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'conversation_participants' }, refreshConversations)
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'conversation_participants' }, refreshConversations)
-      // A group was renamed or got a new photo.
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'conversations' }, refreshConversations)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () =>
-        qc.invalidateQueries({ queryKey: friendKeys.all }),
-      )
-      .subscribe((status) => {
+      .channel(`user:${userId}`, { config: { private: true } })
+      .on('broadcast', { event: 'message' }, ({ payload }) => onMessage(payload as MessageRowLike))
+      .on('broadcast', { event: 'read' }, ({ payload }) => onRead(payload as ReadEvent))
+      // Added to or removed from a chat, a new chat, a group renamed or given a new photo, roles.
+      .on('broadcast', { event: 'conversations' }, () => qc.invalidateQueries({ queryKey: conversationKeys.all }))
+      .on('broadcast', { event: 'friends' }, () => qc.invalidateQueries({ queryKey: friendKeys.all }))
+
+    // Private channel: Realtime needs the signed-in user's token before joining.
+    supabase.realtime.setAuth().then(() => {
+      if (disposed) return
+      channel.subscribe((status) => {
         if (disposed) return
         if (status === 'SUBSCRIBED') {
           setConnection('live')
@@ -115,6 +109,7 @@ export function useLiveUpdates({ userId, openConversationId, onReadWhileOpen }: 
           setConnection('lost')
         }
       })
+    })
 
     return () => {
       disposed = true

@@ -126,7 +126,13 @@ export interface OutgoingMessage {
   attachment?: Attachment
 }
 
-export async function insertMessage(message: OutgoingMessage) {
+/** Where the attachment ended up, so the app can show it from the server. */
+export interface SavedMessage {
+  imagePath?: string
+  attachment?: Attachment
+}
+
+export async function insertMessage(message: OutgoingMessage): Promise<SavedMessage> {
   let imagePath: string | null = null
   let attachment: Attachment | undefined = message.attachment
 
@@ -148,4 +154,5 @@ export async function insertMessage(message: OutgoingMessage) {
   // 23505 = duplicate key: a retry of a message that actually reached the server
   // the first time. The message exists, so that's a success.
   if (error && error.code !== '23505') throw error
+  return { imagePath: imagePath ?? undefined, attachment }
 }
