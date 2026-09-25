@@ -1,13 +1,14 @@
-import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData, type QueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, type InfiniteData, type QueryClient } from '@tanstack/react-query'
 import type { CachedMessage, Conversation } from '@/types/chat'
 import { privacyKeys } from '@/features/privacy/queries'
 import { conversationKeys } from '../conversations/queries'
-import { PAGE_SIZE, fetchMessagePage, insertMessage, withMediaUrls } from './api'
+import { PAGE_SIZE, fetchMessagePage, insertMessage, withMediaUrls, type SavedMessage } from './api'
 
 type Pages = InfiniteData<CachedMessage[], string | undefined>
 
 export const messageKeys = {
   list: (conversationId: string) => ['messages', conversationId] as const,
+  send: ['send-message'] as const,
 }
 
 /**
@@ -63,14 +64,18 @@ export function bumpConversation(qc: QueryClient, message: CachedMessage) {
   })
 }
 
-export function useSendMessage(conversationId: string) {
-  const qc = useQueryClient()
-
-  return useMutation({
+/**
+ * Sending a message, registered once on the QueryClient (not inside a component) so
+ * that the outbox works: offline, TanStack Query pauses the send and resumes it when
+ * you're back online, and a paused text message even survives closing Hamsa (it's
+ * saved with the cache and resumed at start-up).
+ */
+export function registerMessageMutations(qc: QueryClient) {
+  qc.setMutationDefaults(messageKeys.send, {
     mutationFn: (message: CachedMessage) =>
       insertMessage({
         id: message.id,
-        conversationId,
+        conversationId: message.conversationId,
         kind: message.kind,
         content: message.content,
         file: message.file,
@@ -78,14 +83,15 @@ export function useSendMessage(conversationId: string) {
       }),
 
     // Runs before the request: the message shows up instantly as "sending".
-    onMutate: async (message) => {
-      await qc.cancelQueries({ queryKey: messageKeys.list(conversationId) })
+    onMutate: async (message: CachedMessage) => {
+      await qc.cancelQueries({ queryKey: messageKeys.list(message.conversationId) })
       const optimistic = { ...message, pending: 'sending' as const }
-      upsertMessage(qc, conversationId, optimistic)
+      upsertMessage(qc, message.conversationId, optimistic)
       bumpConversation(qc, optimistic)
     },
 
-    onSuccess: async (saved, message) => {
+    onSuccess: async (saved: SavedMessage, message: CachedMessage) => {
+      const { conversationId } = message
       patchMessage(qc, conversationId, message.id, { pending: undefined, file: undefined })
       if (!message.file) return
       // Swap the local preview for the uploaded file, then free the preview's memory.
@@ -104,11 +110,15 @@ export function useSendMessage(conversationId: string) {
 
     // Failed messages stay where they are, marked failed, with a retry button.
     // The other person may have just blocked you: check, so the chat can say so.
-    onError: (_error, message) => {
-      patchMessage(qc, conversationId, message.id, { pending: 'failed' })
+    onError: (_error: Error, message: CachedMessage) => {
+      patchMessage(qc, message.conversationId, message.id, { pending: 'failed' })
       qc.invalidateQueries({ queryKey: privacyKeys.blockedConversations })
     },
 
     onSettled: () => qc.invalidateQueries({ queryKey: conversationKeys.all }),
   })
+}
+
+export function useSendMessage() {
+  return useMutation<SavedMessage, Error, CachedMessage>({ mutationKey: messageKeys.send })
 }

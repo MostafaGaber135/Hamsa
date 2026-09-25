@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { reportError } from '@/lib/monitoring'
 
 interface ErrorBoundaryProps {
   /** Shown instead of the children once they have thrown while rendering. */
@@ -23,6 +24,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error(error, info.componentStack)
+    reportError(error)
   }
 
   render() {

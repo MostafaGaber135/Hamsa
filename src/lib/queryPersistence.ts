@@ -1,5 +1,5 @@
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister'
-import type { Query } from '@tanstack/react-query'
+import type { Mutation, Query } from '@tanstack/react-query'
 import type { PersistQueryClientOptions } from '@tanstack/react-query-persist-client'
 import { del, get, set } from 'idb-keyval'
 
@@ -47,11 +47,17 @@ function shouldPersist(query: Query) {
   return !pages.some((page) => page.some((m) => m.pending || m.file))
 }
 
+/** The outbox: a text message waiting for a connection. A picked file can't be saved here. */
+function shouldPersistMutation(mutation: Mutation) {
+  const variables = mutation.state.variables as { file?: unknown } | undefined
+  return mutation.state.isPaused && !variables?.file
+}
+
 export const persistOptions: Omit<PersistQueryClientOptions, 'queryClient'> = {
   persister,
   maxAge: MAX_AGE_MS,
   buster: CACHE_VERSION,
-  dehydrateOptions: { shouldDehydrateQuery: shouldPersist },
+  dehydrateOptions: { shouldDehydrateQuery: shouldPersist, shouldDehydrateMutation: shouldPersistMutation },
 }
 
 /** Forget everything saved in this browser (on sign-out). */
