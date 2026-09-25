@@ -4,6 +4,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { BrandMark } from '@/components/ui/BrandMark'
 import { Button, IconButton, focusRing } from '@/components/ui/Button'
+import { Spinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
 import type { ConversationAction, User } from '@/types/chat'
@@ -37,6 +38,27 @@ interface SidebarProps {
   /** Shown instead of the list while loading, on error, or when there are no conversations. */
   listPlaceholder?: ReactNode
   className?: string
+  /** Messages matching the search (undefined: not searching messages). */
+  messageResults?: { id: string; conversationId: string; title: string; content: string; createdAt: string }[]
+  searchingMessages?: boolean
+  onOpenMessage?: (conversationId: string, messageId: string) => void
+}
+
+/** The text with the searched words marked. */
+function Highlight({ text, query }: { text: string; query: string }) {
+  const q = query.trim()
+  const at = q ? text.toLocaleLowerCase().indexOf(q.toLocaleLowerCase()) : -1
+  if (at < 0) return <>{text}</>
+  // Start a little before the match, so it's visible in a two-line preview.
+  const from = Math.max(0, at - 30)
+  return (
+    <>
+      {from > 0 && '…'}
+      {text.slice(from, at)}
+      <mark className="rounded-sm bg-accent-soft px-0.5 text-ink">{text.slice(at, at + q.length)}</mark>
+      {text.slice(at + q.length)}
+    </>
+  )
 }
 
 export function Sidebar(props: SidebarProps) {
@@ -116,6 +138,38 @@ export function Sidebar(props: SidebarProps) {
             onSelect={props.onSelect}
             onAction={props.onConversationAction}
           />
+        )}
+
+        {props.messageResults && (
+          <section aria-label={t.searchResults.messages} className="mt-3 border-t border-line pt-3">
+            <h2 className="flex items-center gap-2 px-3 pb-1 text-overline text-ink-muted uppercase">
+              {t.searchResults.messages}
+              {props.searchingMessages && <Spinner />}
+            </h2>
+            {props.messageResults.length === 0 && !props.searchingMessages ? (
+              <p className="px-3 py-2 text-body text-ink-muted">{t.searchResults.none}</p>
+            ) : (
+              <ul className="flex flex-col">
+                {props.messageResults.map((result) => (
+                  <li key={result.id}>
+                    <button
+                      type="button"
+                      onClick={() => props.onOpenMessage?.(result.conversationId, result.id)}
+                      className={cn('flex w-full flex-col rounded-2xl px-3 py-2 text-start hover:bg-surface-hover', focusRing)}
+                    >
+                      <span className="flex w-full items-baseline justify-between gap-2">
+                        <span dir="auto" className="min-w-0 truncate text-name text-ink">{result.title}</span>
+                        <span className="shrink-0 text-meta text-ink-subtle">{fmt.listTime(result.createdAt)}</span>
+                      </span>
+                      <span dir="auto" className="line-clamp-2 text-preview text-ink-muted">
+                        <Highlight text={result.content} query={query} />
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         )}
       </div>
 

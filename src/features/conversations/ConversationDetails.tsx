@@ -1,14 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
-import { Camera, Check, CircleAlert, LogOut, MoreHorizontal, Pencil, Search, Shield, Trash2, UserMinus, UserPlus, X } from 'lucide-react'
+import {
+  Camera, Check, CircleAlert, Copy, Flag, Link2, LogOut, MoreHorizontal, Pencil, RefreshCw, Search, Shield, Trash2, UserMinus,
+  UserPlus, X,
+} from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button, IconButton, focusRing } from '@/components/ui/Button'
 import { Menu, type MenuAnchor } from '@/components/ui/Menu'
 import { Spinner } from '@/components/ui/Spinner'
 import { TextField } from '@/components/ui/TextField'
-import { fetchSharedItems } from '@/features/messages/api'
+import { fetchSharedItems, type SharedTab } from '@/features/messages/api'
 import { FileCard, VoicePlayer } from '@/features/messages/MessageContent'
 import { BlockButton } from '@/features/privacy/BlockButton'
+import { ReportDialog } from '@/features/privacy/ReportDialog'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
 import { useDebounced } from '@/lib/useDebounced'
@@ -16,7 +20,6 @@ import { WALLPAPERS, wallpaperStyle } from '@/lib/wallpapers'
 import type { Conversation, ConversationAction, Member, Message, User } from '@/types/chat'
 import { useGroupAdmin, useProfileSearch, useSetWallpaper } from './queries'
 
-type Tab = 'media' | 'files' | 'voice' | 'links'
 
 interface ConversationDetailsProps {
   conversation: Conversation
@@ -32,6 +35,7 @@ interface ConversationDetailsProps {
 export function ConversationDetails({ conversation, title, me, onClose, onOpenMedia, onAction, className }: ConversationDetailsProps) {
   const { t, fmt } = useLocale()
   const [editing, setEditing] = useState(false)
+  const [reporting, setReporting] = useState(false)
   const peer = conversation.isGroup ? undefined : conversation.members.find((m) => m.id !== me.id)
   const isAdmin = conversation.isGroup && conversation.myRole === 'admin'
 
@@ -64,6 +68,9 @@ export function ConversationDetails({ conversation, title, me, onClose, onOpenMe
             <p className="text-body text-ink-muted" dir={peer ? 'ltr' : undefined}>
               {conversation.isGroup ? t.details.members(fmt.number(conversation.members.length)) : `@${peer?.username ?? ''}`}
             </p>
+            {conversation.description && (
+              <p dir="auto" className="mt-1 max-w-full text-body whitespace-pre-wrap text-ink">{conversation.description}</p>
+            )}
             {isAdmin && (
               <Button variant="secondary" size="sm" className="mt-2" onClick={() => setEditing(true)} icon={<Pencil size={14} strokeWidth={1.75} aria-hidden />}>
                 {t.details.editGroup}
@@ -74,11 +81,21 @@ export function ConversationDetails({ conversation, title, me, onClose, onOpenMe
 
         <SharedItems conversation={conversation} onOpenMedia={onOpenMedia} />
         <WallpaperPicker conversation={conversation} />
+        {isAdmin && <InviteLink conversation={conversation} />}
         {conversation.isGroup && <Members conversation={conversation} me={me} isAdmin={isAdmin} />}
 
         {peer && (
           <div className="border-t border-line p-4">
             <BlockButton user={peer} />
+            <Button
+              variant="ghost"
+              className="mt-1 w-full justify-start text-danger hover:text-danger"
+              onClick={() => setReporting(true)}
+              icon={<Flag size={18} strokeWidth={1.75} aria-hidden />}
+            >
+              {t.report.reportUser(peer.name)}
+            </Button>
+            {reporting && <ReportDialog user={peer} onClose={() => setReporting(false)} />}
           </div>
         )}
 
@@ -99,6 +116,47 @@ export function ConversationDetails({ conversation, title, me, onClose, onOpenMe
   )
 }
 
+/** Admins: a link anyone can use to join the group; a new link stops the old one working. */
+function InviteLink({ conversation }: { conversation: Conversation }) {
+  const { t } = useLocale()
+  const { invite } = useGroupAdmin(conversation.id)
+  const [copied, setCopied] = useState(false)
+  const link = conversation.inviteCode ? `${window.location.origin}/join/${conversation.inviteCode}` : null
+
+  async function copy() {
+    if (!link) return
+    await navigator.clipboard?.writeText(link).catch(() => undefined)
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <Section title={t.group.invite} hint={t.group.inviteHint}>
+      {link ? (
+        <div className="flex flex-col gap-2">
+          <p dir="ltr" className="truncate rounded-xl bg-surface-sunken px-3 py-2 text-caption text-ink select-all">{link}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={copy} icon={copied ? <Check size={14} strokeWidth={2} aria-hidden /> : <Copy size={14} strokeWidth={1.75} aria-hidden />}>
+              {copied ? t.group.copied : t.group.copyLink}
+            </Button>
+            <Button size="sm" variant="secondary" disabled={invite.isPending} onClick={() => invite.mutate(true)} icon={<RefreshCw size={14} strokeWidth={1.75} aria-hidden />}>
+              {t.group.resetLink}
+            </Button>
+            <Button size="sm" variant="ghost" disabled={invite.isPending} onClick={() => invite.mutate(false)}>
+              {t.group.turnOff}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button size="sm" variant="secondary" disabled={invite.isPending} onClick={() => invite.mutate(true)} icon={<Link2 size={14} strokeWidth={1.75} aria-hidden />}>
+          {t.group.createInvite}
+        </Button>
+      )}
+      {invite.error && <p role="alert" dir="auto" className="mt-2 text-caption text-danger">{invite.error.message}</p>}
+    </Section>
+  )
+}
+
 function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
     <section className="border-t border-line px-4 py-4">
@@ -111,18 +169,19 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
 
 function SharedItems({ conversation, onOpenMedia }: { conversation: Conversation; onOpenMedia: (items: Message[], id: string) => void }) {
   const { t, fmt } = useLocale()
-  const [tab, setTab] = useState<Tab>('media')
+  const [tab, setTab] = useState<SharedTab>('media')
   const query = useQuery({
     queryKey: ['shared', conversation.id, tab, conversation.clearedAt],
     queryFn: () => fetchSharedItems(conversation.id, tab, conversation.clearedAt),
     staleTime: 15_000,
   })
   const items = query.data ?? []
-  const tabs: { id: Tab; label: string }[] = [
+  const tabs: { id: SharedTab; label: string }[] = [
     { id: 'media', label: t.details.media },
     { id: 'files', label: t.details.files },
     { id: 'voice', label: t.details.voice },
     { id: 'links', label: t.details.links },
+    { id: 'saved', label: t.details.saved },
   ]
 
   return (
@@ -248,6 +307,7 @@ function GroupEditor({ conversation, onDone }: { conversation: Conversation; onD
   const { t } = useLocale()
   const { update } = useGroupAdmin(conversation.id)
   const [name, setName] = useState(conversation.name ?? '')
+  const [description, setDescription] = useState(conversation.description ?? '')
   const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null)
   const [removed, setRemoved] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -282,6 +342,18 @@ function GroupEditor({ conversation, onDone }: { conversation: Conversation; onD
         />
       </div>
       <TextField label={t.details.groupName} value={name} onChange={(e) => setName(e.target.value)} maxLength={60} required />
+      <label className="flex flex-col gap-1.5 text-body font-semibold text-ink">
+        {t.group.description}
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder={t.group.descriptionPlaceholder}
+          maxLength={500}
+          rows={3}
+          dir="auto"
+          className="resize-none rounded-xl bg-surface-sunken px-3 py-2 font-normal ring-1 ring-line outline-none placeholder:text-ink-muted focus:ring-2 focus:ring-focus-ring"
+        />
+      </label>
       {update.error && (
         <p role="alert" className="flex gap-2 rounded-xl bg-danger-soft px-3 py-2 text-body text-danger">
           <CircleAlert size={18} strokeWidth={1.75} className="mt-px shrink-0" aria-hidden />
@@ -294,7 +366,12 @@ function GroupEditor({ conversation, onDone }: { conversation: Conversation; onD
           disabled={!name.trim() || update.isPending}
           onClick={() =>
             update.mutate(
-              { name, photo: photo?.file, avatarUrl: removed ? null : (conversation.avatarUrl ?? null) },
+              {
+                name,
+                photo: photo?.file,
+                avatarUrl: removed ? null : (conversation.avatarUrl ?? null),
+                description: description.trim() !== (conversation.description ?? '') ? description : undefined,
+              },
               { onSuccess: onDone },
             )
           }

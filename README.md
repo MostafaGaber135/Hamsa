@@ -47,6 +47,16 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 - Hamsa's own sticker pack, an emoji picker, per-conversation drafts, and an unread count in the browser tab
 - Chat info panel: shared media, files, voice notes and links, plus a per-chat wallpaper (9 designs, light and dark)
 - Smart scrolling: follows new messages when you're at the bottom, shows a "new messages" button when you're reading history, and loads older messages as you scroll up
+- A menu on every message (right-click, long press, or the ⋯ button): reply, react, copy, edit (15 minutes), delete for everyone (a day), pin, save, message info, report
+- Replies quote the original (click to jump to it); one reaction per person, shown under the bubble
+- Clickable links with a text preview (title and description, fetched by the server; no third-party images)
+- @mentions in groups, which notify even when the group is muted
+- Search every message you can read, English and Arabic alike, and jump to the result
+- Pinned messages at the top of a chat (admins in groups), and saved messages in the chat info
+- "Read by" for your messages in groups
+- Several photos or files at once, with upload progress and cancel; voice notes at 1×, 1.5× or 2×
+- Drafts kept per chat, even after closing Hamsa
+- One-to-one voice and video calls (WebRTC)
 
 **Presence**
 - Online status and "last seen", visible only to people you chat with — or to nobody, if you choose
@@ -156,6 +166,10 @@ All access rules live in the database, not in the frontend, so they hold even if
 - **Nothing left behind.** Files whose message was never saved, or whose chat is gone, and replaced photos are deleted by a scheduled Edge Function. Deleting an account deletes the profile, messages, one-to-one chats, friendships and devices; groups get a new admin if needed.
 - **Private file storage.** Chat images, voice notes and documents are only reachable through short-lived signed URLs, and only members can upload to a conversation's folder.
 - **Admin-only group changes.** Renaming, the group photo and membership changes are checked in the database, not just hidden in the UI. A group can never lose its last admin.
+- **Edits, deletions, pins and reactions go through functions** that check who you are, the time limits and admin rights; the server works out @mentions itself, and a reply can only quote a message from the same chat.
+- **Reports can't be read from the app.** They're kept, with the reported text, for whoever runs Hamsa to review in the dashboard.
+- **Link previews never reveal readers.** The page is fetched by an Edge Function (public web addresses only), cached, and shown as text.
+- **Calls are peer to peer.** Audio and video go directly between the two browsers, encrypted by WebRTC; only the signalling uses the chat's private channel.
 - **Blocking is enforced by the database.** The messages policy refuses writes into a blocked one-to-one chat, and new chats, friend requests and group invites check blocks and each person's group setting. Nobody can look up who blocked whom.
 - **Photos only from Hamsa's storage.** A profile or group photo must be a file in your own folder of this project's avatars bucket (or your Google photo), so nobody can plant a tracking image that logs who looked at it.
 - **Security headers.** `vercel.json` sets `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` and HSTS, plus a Content Security Policy (currently in report-only mode).
@@ -265,6 +279,11 @@ Supabase's built-in email only sends to your own team, so real users need your o
    string), and deploy [`supabase/functions/notification-action/index.ts`](supabase/functions/notification-action/index.ts)
    as `notification-action` with **Verify JWT** off. Redeploy `send-push` so it picks up the secret.
 
+### Link previews
+
+Deploy [`supabase/functions/link-preview/index.ts`](supabase/functions/link-preview/index.ts) as `link-preview`
+with **Verify JWT** off (it checks the caller's token itself). Without it, links are still clickable, just without a preview.
+
 ### Account deletion
 
 1. **Edge Functions → Deploy a new function → Via editor**: name it `delete-account`, paste
@@ -294,6 +313,7 @@ src/
 ├── components/           Update prompt, crash screen; ui/: Button, Avatar, Badge, Menu, Link, TextField…
 ├── features/
 │   ├── auth/             Login and sign-up, session
+│   ├── calls/            Voice and video calls (WebRTC)
 │   ├── chat/             The signed-in app shell
 │   ├── conversations/    Sidebar, conversation list and menu, new chat dialog
 │   ├── messages/         Thread, message bubble, composer, emoji picker
@@ -310,7 +330,7 @@ src/
 └── types/                App types and generated database types
 supabase/
 ├── schema.sql            The complete database in one file
-├── functions/            Edge Functions: send-push, notification-action, delete-account, cleanup-storage
+├── functions/            Edge Functions: send-push, notification-action, link-preview, delete-account, cleanup-storage
 ├── email-templates/      Verification and reset emails with the 6-digit code
 ├── migrations/           The same schema, step by step
 └── tests/                SQL tests for the security rules
@@ -323,7 +343,6 @@ Each feature keeps its own `api.ts` (Supabase calls), `queries.ts` (TanStack Que
 ## Roadmap
 
 - [ ] Unit tests (Vitest) and end-to-end tests (Playwright) in CI
-- [ ] Message reactions and replies
 
 ---
 

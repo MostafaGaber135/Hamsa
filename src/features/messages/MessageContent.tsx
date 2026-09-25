@@ -7,6 +7,8 @@ import type { Message } from '@/types/chat'
 import { saveFile } from './media'
 import { STICKERS, isKnownSticker, stickerUrl } from './stickers'
 
+const SPEEDS = [1, 1.5, 2] as const
+
 /** Only one voice note plays at a time. */
 let playing: HTMLAudioElement | null = null
 
@@ -18,6 +20,7 @@ export function VoicePlayer({ message, out }: { message: Message; out: boolean }
   const audioRef = useRef<HTMLAudioElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [position, setPosition] = useState(0)
+  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1)
   // WebM recordings often report no duration until fully played, so use the recorded one.
   const durationMs = message.attachment?.durationMs ?? 0
   const bars = message.attachment?.waveform?.length ? message.attachment.waveform : FALLBACK_BARS
@@ -36,7 +39,8 @@ export function VoicePlayer({ message, out }: { message: Message; out: boolean }
     if (audio.paused) {
       if (playing && playing !== audio) playing.pause()
       playing = audio
-      audio.play()
+      audio.playbackRate = speed
+      audio.play().catch(() => setIsPlaying(false))
     } else {
       audio.pause()
     }
@@ -91,8 +95,22 @@ export function VoicePlayer({ message, out }: { message: Message; out: boolean }
             className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
           />
         </div>
-        <span className="mt-0.5 block text-meta tabular-nums opacity-80">
+        <span className="mt-0.5 flex items-center justify-between text-meta tabular-nums opacity-80">
           {formatDuration(isPlaying || position > 0 ? position : durationMs, locale)}
+          {/* 1× → 1.5× → 2× → 1×, like other messengers. */}
+          <button
+            type="button"
+            onClick={() => {
+              const next = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]
+              setSpeed(next)
+              if (audioRef.current) audioRef.current.playbackRate = next
+            }}
+            aria-label={t.msg.speed(String(speed))}
+            title={t.msg.speed(String(speed))}
+            className="rounded-full bg-black/10 px-1.5 font-bold hover:bg-black/15 focus-visible:outline-2 focus-visible:outline-focus-ring"
+          >
+            {speed}×
+          </button>
         </span>
       </div>
       {message.fileUrl && (

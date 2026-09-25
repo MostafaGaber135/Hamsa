@@ -1,5 +1,6 @@
-import { ArrowLeft, PanelRight, WifiOff } from 'lucide-react'
+import { ArrowLeft, PanelRight, Phone, Pin, Video, WifiOff } from 'lucide-react'
 import { lazy, Suspense, useState, type ReactNode } from 'react'
+import { messagePreview } from '@/features/conversations/preview'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button, IconButton } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
@@ -8,7 +9,8 @@ import { useLocale } from '@/lib/i18n'
 import type { Conversation, Message, User } from '@/types/chat'
 import { Composer, type Draft } from './Composer'
 import { isViewable } from './media'
-import { MessageThread } from './MessageThread'
+import { MessageThread, type JumpTarget } from './MessageThread'
+import { useMessageActions, usePinnedMessages } from './queries'
 import { TypingInline } from './TypingIndicator'
 
 const MediaViewer = lazy(() => import('./MediaViewer').then((m) => ({ default: m.MediaViewer })))
@@ -39,15 +41,26 @@ interface ChatPaneProps {
   onUnblock?: () => void
   /** A message request from someone who isn't your friend: accept, block or delete. */
   request?: { onAccept: () => void; onBlock: () => void; onDelete: () => void }
+  /** Scroll to this message when it changes (e.g. a search result). */
+  jumpTarget?: JumpTarget
+  /** Start a voice or video call (one-to-one chats). */
+  onCall?: (video: boolean) => void
 }
 
 export function ChatPane({
   conversation, title, peer, messages, users, currentUserId, onBack, onSend, onRetry,
   hasOlder, loadingOlder, onLoadOlder, threadPlaceholder, onTyping, connection, onToggleDetails, detailsOpen,
-  blocked, onUnblock, request,
+  blocked, onUnblock, request, jumpTarget, onCall,
 }: ChatPaneProps) {
   const { t, fmt, lang } = useLocale()
   const [viewing, setViewing] = useState<string | null>(null)
+  const [replyTo, setReplyTo] = useState<Message | null>(null)
+  const [editing, setEditing] = useState<Message | null>(null)
+  // Jumps from this pane (the pinned bar); the latest of these and the parent's wins.
+  const [localJump, setLocalJump] = useState<JumpTarget>()
+  const jump = !localJump || (jumpTarget && jumpTarget.key > localJump.key) ? jumpTarget : localJump
+  const { edit } = useMessageActions(conversation.id, currentUserId)
+  const mentionable = conversation.isGroup ? conversation.members.filter((m) => m.id !== currentUserId) : []
   const viewable = messages.filter(isViewable)
   const align = lang === 'ar' ? 'text-right' : 'text-left'
   const typingUsers = (conversation.typingUserIds ?? []).map((id) => users[id]).filter(Boolean)
@@ -86,6 +99,16 @@ export function ChatPane({
             <span className={cn('block truncate text-caption text-ink-muted', align)}>{subtitle}</span>
           </span>
         </button>
+        {onCall && !blocked && (
+          <>
+            <IconButton label={t.call.audio} onClick={() => onCall(false)}>
+              <Phone size={19} strokeWidth={1.75} />
+            </IconButton>
+            <IconButton label={t.call.video} onClick={() => onCall(true)} className="max-sm:hidden">
+              <Video size={20} strokeWidth={1.75} />
+            </IconButton>
+          </>
+        )}
         <IconButton label={t.details.open} active={detailsOpen} onClick={onToggleDetails}>
           <PanelRight size={20} strokeWidth={1.75} className="rtl:-scale-x-100" />
         </IconButton>
@@ -101,6 +124,8 @@ export function ChatPane({
         </div>
       )}
 
+      <PinnedBar conversationId={conversation.id} onJump={(id) => setLocalJump({ id, key: Date.now() })} />
+
       {/* Your chosen background sits behind the messages and the composer. */}
       <div className="flex min-h-0 flex-1 flex-col" style={wallpaperStyle(conversation.wallpaper)}>
       {threadPlaceholder ?? (
@@ -112,9 +137,18 @@ export function ChatPane({
         messages={messages}
         users={users}
         currentUserId={currentUserId}
-        isGroup={conversation.isGroup}
+        conversation={conversation}
         typingUsers={typingUsers}
         onRetry={onRetry}
+        onReply={(message) => {
+          setEditing(null)
+          setReplyTo(message)
+        }}
+        onEdit={(message) => {
+          setReplyTo(null)
+          setEditing(message)
+        }}
+        jumpTarget={jump}
       />
       )}
 
@@ -154,6 +188,16 @@ export function ChatPane({
             recipientName={title}
             onSend={onSend}
             onTyping={onTyping}
+            replyTo={
+              replyTo
+                ? { message: replyTo, senderName: replyTo.senderId === currentUserId ? t.you : (users[replyTo.senderId]?.name ?? '') }
+                : undefined
+            }
+            onCancelReply={() => setReplyTo(null)}
+            editing={editing ?? undefined}
+            onSaveEdit={(message, content) => edit.mutate({ message, content })}
+            onCancelEdit={() => setEditing(null)}
+            mentionable={mentionable}
           />
         )}
       </div>
@@ -165,5 +209,34 @@ export function ChatPane({
         </Suspense>
       )}
     </>
+  )
+}
+
+/** The pinned messages, one at a time: a click jumps to it and shows the next. */
+function PinnedBar({ conversationId, onJump }: { conversationId: string; onJump: (id: string) => void }) {
+  const { t, fmt } = useLocale()
+  const pinned = usePinnedMessages(conversationId)
+  const [index, setIndex] = useState(0)
+  const list = pinned.data ?? []
+  if (list.length === 0) return null
+  const current = list[index % list.length]
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        onJump(current.id)
+        setIndex((i) => (i + 1) % list.length)
+      }}
+      className="flex shrink-0 items-center gap-3 border-b border-line bg-surface px-4 py-2 text-start hover:bg-surface-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring md:px-6"
+    >
+      <Pin size={16} strokeWidth={2} className="shrink-0 text-accent" aria-hidden />
+      <span className="min-w-0 flex-1">
+        <span className="block text-caption font-bold text-accent">
+          {t.msg.pinned(`${fmt.number((index % list.length) + 1)}/${fmt.number(list.length)}`)}
+        </span>
+        <span dir="auto" className="block truncate text-caption text-ink-muted">{messagePreview(current, t)}</span>
+      </span>
+    </button>
   )
 }

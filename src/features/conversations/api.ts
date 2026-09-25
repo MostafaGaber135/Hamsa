@@ -45,6 +45,12 @@ export interface MessageRowLike {
   created_at: string;
   kind?: string | null;
   attachment?: unknown;
+  reply_to_id?: string | null;
+  edited_at?: string | null;
+  deleted_at?: string | null;
+  pinned_at?: string | null;
+  mentions?: string[] | null;
+  message_reactions?: { user_id: string; emoji: string }[] | null;
 }
 
 const MAX_WAVEFORM_BARS = 64;
@@ -110,6 +116,13 @@ export function toMessage(
     imagePath: row.image_path ?? undefined,
     attachment: toAttachment(row.attachment),
     createdAt: row.created_at,
+    replyToId: row.reply_to_id ?? undefined,
+    editedAt: row.edited_at ?? undefined,
+    deletedAt: row.deleted_at ?? undefined,
+    pinnedAt: row.pinned_at ?? undefined,
+    mentions: row.mentions ?? undefined,
+    // Only present when the query asked for them (message pages do).
+    reactions: row.message_reactions?.map((r) => ({ userId: r.user_id, emoji: r.emoji })),
   };
 }
 
@@ -151,6 +164,8 @@ export async function fetchConversations(): Promise<Conversation[]> {
       wallpaper: row.wallpaper ?? undefined,
       myRole: row.my_role === "admin" ? "admin" : "member",
       isRequest: row.is_request,
+      description: row.description ?? undefined,
+      inviteCode: row.invite_code ?? undefined,
     };
   });
 }
@@ -297,6 +312,56 @@ export async function updateGroup(
     new_avatar_url: avatarUrl,
   });
   if (error) throw error;
+}
+
+export async function setGroupDescription(conversationId: string, description: string) {
+  const { error } = await supabase.rpc("set_group_description", {
+    conv_id: conversationId,
+    new_description: description,
+  });
+  if (error) throw error;
+}
+
+/** Creates a new invite link (the old one stops working), or turns it off. Returns the code. */
+export async function setGroupInvite(conversationId: string, enabled: boolean): Promise<string | null> {
+  const { data, error } = await supabase.rpc("set_group_invite", {
+    conv_id: conversationId,
+    enabled,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export interface GroupInvite {
+  conversationId: string;
+  name: string;
+  avatarUrl: string | null;
+  description: string | null;
+  memberCount: number;
+  alreadyMember: boolean;
+}
+
+/** What an invite link leads to, or null if it doesn't work any more. */
+export async function fetchGroupInvite(code: string): Promise<GroupInvite | null> {
+  const { data, error } = await supabase.rpc("get_group_invite", { code });
+  if (error) throw error;
+  const row = data[0];
+  return row
+    ? {
+        conversationId: row.conversation_id,
+        name: row.name,
+        avatarUrl: row.avatar_url,
+        description: row.description,
+        memberCount: row.member_count,
+        alreadyMember: row.already_member,
+      }
+    : null;
+}
+
+export async function joinGroupByInvite(code: string): Promise<string> {
+  const { data, error } = await supabase.rpc("join_group_by_invite", { code });
+  if (error) throw error;
+  return data;
 }
 
 export async function uploadGroupPhoto(

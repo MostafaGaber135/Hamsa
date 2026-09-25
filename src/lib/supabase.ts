@@ -11,3 +11,6 @@ if (!url || !key) {
 }
 
 export const supabase = createClient<Database>(url, key)
+
+/** For requests supabase-js can't make itself, such as uploads that report progress. */
+export const supabaseConfig = { url, key }
