@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Conversation, ConversationAction } from '@/types/chat'
 import {
   addGroupMembers, fetchConversations, fetchProfile, markConversationRead, removeGroupMember, runConversationAction,
-  searchProfiles, setMemberRole, setWallpaper, updateGroup, uploadGroupPhoto,
+  searchProfiles, setGroupDescription, setGroupInvite, setMemberRole, setWallpaper, updateGroup, uploadGroupPhoto,
 } from './api'
 
 export const conversationKeys = {
@@ -105,17 +105,25 @@ export function useGroupAdmin(conversationId: string) {
   const refresh = () => qc.invalidateQueries({ queryKey: conversationKeys.all })
 
   const update = useMutation({
-    mutationFn: async ({ name, photo, avatarUrl }: { name: string; photo?: File; avatarUrl: string | null }) => {
+    mutationFn: async ({ name, photo, avatarUrl, description }: {
+      name: string
+      photo?: File
+      avatarUrl: string | null
+      /** Only sent when it changed. */
+      description?: string
+    }) => {
       const url = photo ? await uploadGroupPhoto(conversationId, photo) : avatarUrl
       await updateGroup(conversationId, name, url)
+      if (description !== undefined) await setGroupDescription(conversationId, description)
     },
     onSettled: refresh,
   })
+  const invite = useMutation({ mutationFn: (enabled: boolean) => setGroupInvite(conversationId, enabled), onSettled: refresh })
   const add = useMutation({ mutationFn: (ids: string[]) => addGroupMembers(conversationId, ids), onSettled: refresh })
   const remove = useMutation({ mutationFn: (id: string) => removeGroupMember(conversationId, id), onSettled: refresh })
   const role = useMutation({
     mutationFn: ({ id, role }: { id: string; role: 'member' | 'admin' }) => setMemberRole(conversationId, id, role),
     onSettled: refresh,
   })
-  return { update, add, remove, role }
+  return { update, add, remove, role, invite }
 }

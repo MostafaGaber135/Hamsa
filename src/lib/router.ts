@@ -11,6 +11,7 @@ export type Route =
   | { name: 'friends' }
   | { name: 'profile' }
   | { name: 'share' }
+  | { name: 'join'; code: string }
   | { name: 'login' }
   | { name: 'privacy' }
 
@@ -22,6 +23,7 @@ export function parseRoute(pathname: string): Route {
   if (first === 'friends') return { name: 'friends' }
   if (first === 'profile') return { name: 'profile' }
   if (first === 'share') return { name: 'share' }
+  if (first === 'join' && second && /^[0-9a-f]{32}$/i.test(second)) return { name: 'join', code: second.toLowerCase() }
   if (first === 'login') return { name: 'login' }
   if (first === 'privacy') return { name: 'privacy' }
   return { name: 'home' }
@@ -31,6 +33,7 @@ export function pathFor(route: Route): string {
   switch (route.name) {
     case 'home': return '/'
     case 'chat': return `/c/${route.id}`
+    case 'join': return `/join/${route.code}`
     default: return `/${route.name}`
   }
 }

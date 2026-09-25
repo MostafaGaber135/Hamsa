@@ -11,6 +11,7 @@ type TypingMap = Record<string, string[]>
  * One private Realtime channel per conversation ("typing:<id>"), carrying:
  * - "Sara is typing…" through Broadcast (nothing is stored in the database)
  * - who is online through Presence
+ * - call signalling (offers, answers, network candidates) through Broadcast
  * The realtime.messages policies only let members in (and not a one-to-one chat
  * where either person blocked the other), so your online status only ever
  * reaches people you chat with. `shareOnline` false: you watch, but never appear.
@@ -22,6 +23,8 @@ export function useConversationChannels(
   userId: string,
   shareOnline: boolean,
   quietIds: string[],
+  /** A call signal arrived in a conversation (see features/calls). */
+  onCallSignal?: (conversationId: string, signal: unknown) => void,
 ) {
   const [typing, setTyping] = useState<TypingMap>({})
   const [onlineIn, setOnlineIn] = useState<Record<string, string[]>>({})
@@ -30,6 +33,10 @@ export function useConversationChannels(
   const lastSent = useRef(new Map<string, number>())
   const hideTimers = useRef(new Map<string, number>())
   const shareRef = useRef(shareOnline)
+  const onCallSignalRef = useRef(onCallSignal)
+  useEffect(() => {
+    onCallSignalRef.current = onCallSignal
+  })
   const quietKey = [...quietIds].sort().join(',')
   const quietRef = useRef(new Set(quietIds))
   const idsKey = [...conversationIds].sort().join(',')
@@ -75,6 +82,7 @@ export function useConversationChannels(
           .on('broadcast', { event: 'typing' }, ({ payload }) => {
             if (payload?.userId && payload.userId !== userId) setUserTyping(id, payload.userId, Boolean(payload.typing))
           })
+          .on('broadcast', { event: 'call' }, ({ payload }) => onCallSignalRef.current?.(id, payload))
           .on('presence', { event: 'sync' }, () => {
             const here = Object.keys(channel.presenceState()).filter((key) => key !== userId)
             setOnlineIn((map) => ({ ...map, [id]: here }))
@@ -146,5 +154,10 @@ export function useConversationChannels(
     [userId],
   )
 
-  return { typing, sendTyping, stopTyping, online, wentOfflineAt }
+  /** Sends a call signal to the other people in a conversation. */
+  const sendCallSignal = useCallback((conversationId: string, signal: object) => {
+    channels.current.get(conversationId)?.send({ type: 'broadcast', event: 'call', payload: signal })
+  }, [])
+
+  return { typing, sendTyping, stopTyping, online, wentOfflineAt, sendCallSignal }
 }

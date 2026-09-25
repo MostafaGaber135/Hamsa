@@ -4,7 +4,7 @@ import { toMessage, type MessageRowLike } from '@/features/conversations/api'
 import { conversationKeys } from '@/features/conversations/queries'
 import { friendKeys } from '@/features/friends/queries'
 import { withMediaUrls } from '@/features/messages/api'
-import { bumpConversation, upsertMessage } from '@/features/messages/queries'
+import { applyMessageUpdate, applyReaction, bumpConversation, upsertMessage } from '@/features/messages/queries'
 import { supabase } from '@/lib/supabase'
 import type { Conversation } from '@/types/chat'
 
@@ -14,6 +14,13 @@ interface ReadEvent {
   conversation_id: string
   user_id: string
   last_read_at: string
+}
+
+interface ReactionEvent {
+  message_id: string
+  conversation_id: string
+  user_id: string
+  emoji: string | null
 }
 
 interface Options {
@@ -27,8 +34,8 @@ interface Options {
 /**
  * Keeps the cache in sync with the database through your own private channel
  * ("user:<id>"). Database triggers send only what concerns you (Broadcast from
- * Database): new messages, read receipts, "your chat list changed", "your friends
- * changed". Events patch the cache directly instead of refetching.
+ * Database): new messages, edits and deletions, reactions, read receipts, "your chat
+ * list changed", "your friends changed". Events patch the cache directly instead of refetching.
  */
 export function useLiveUpdates({ userId, openConversationId, onReadWhileOpen }: Options) {
   const qc = useQueryClient()
@@ -90,6 +97,12 @@ export function useLiveUpdates({ userId, openConversationId, onReadWhileOpen }: 
       .channel(`user:${userId}`, { config: { private: true } })
       .on('broadcast', { event: 'message' }, ({ payload }) => onMessage(payload as MessageRowLike))
       .on('broadcast', { event: 'read' }, ({ payload }) => onRead(payload as ReadEvent))
+      // Edited, deleted for everyone, pinned or unpinned.
+      .on('broadcast', { event: 'message_updated' }, ({ payload }) => applyMessageUpdate(qc, toMessage(payload as MessageRowLike)))
+      .on('broadcast', { event: 'reaction' }, ({ payload }) => {
+        const r = payload as ReactionEvent
+        if (r.user_id !== userId) applyReaction(qc, r.conversation_id, r.message_id, r.user_id, r.emoji)
+      })
       // Added to or removed from a chat, a new chat, a group renamed or given a new photo, roles.
       .on('broadcast', { event: 'conversations' }, () => qc.invalidateQueries({ queryKey: conversationKeys.all }))
       .on('broadcast', { event: 'friends' }, () => qc.invalidateQueries({ queryKey: friendKeys.all }))

@@ -33,6 +33,12 @@ export interface Attachment {
   lng?: number
 }
 
+/** One person's reaction to a message. */
+export interface Reaction {
+  userId: string
+  emoji: string
+}
+
 export interface Message {
   id: string
   conversationId: string
@@ -50,6 +56,16 @@ export interface Message {
   createdAt: string
   /** Only on your own messages. Derived from members' lastReadAt, or local while sending. */
   status?: MessageStatus
+  /** The message this one replies to. */
+  replyToId?: string
+  editedAt?: string
+  /** Deleted for everyone: the bubble stays, empty. */
+  deletedAt?: string
+  /** Pinned to the top of the chat, for everyone in it. */
+  pinnedAt?: string
+  /** Group members this message @mentions. */
+  mentions?: string[]
+  reactions?: Reaction[]
 }
 
 /** A message that exists only in the cache until the server confirms it. */
@@ -57,6 +73,8 @@ export interface CachedMessage extends Message {
   pending?: 'sending' | 'failed'
   /** The picked file or recording, kept until the upload succeeds so "retry" can upload it again. */
   file?: File
+  /** Upload progress, 0 to 1, while a file is being sent. */
+  progress?: number
 }
 
 export interface Conversation {
@@ -85,6 +103,10 @@ export interface Conversation {
   myRole: 'member' | 'admin'
   /** A one-to-one chat a stranger started, waiting for you to accept or reply. */
   isRequest: boolean
+  /** Group description. */
+  description?: string
+  /** The group's invite link code; only admins get it. */
+  inviteCode?: string
 }
 
 export type ConversationAction =

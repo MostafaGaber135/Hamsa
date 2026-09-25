@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
 import { queryClient } from '@/lib/queryClient'
+import { clearDrafts } from '@/features/messages/drafts'
 import { claimPersistedCache, clearPersistedCache } from '@/lib/queryPersistence'
 import { supabase } from '@/lib/supabase'
 
@@ -15,7 +16,10 @@ export function useSession() {
     // Never show one person's cached chats to the next person on this browser,
     // even if the first one never signed out.
     const adopt = (next: Session | null) => {
-      if (next && claimPersistedCache(next.user.id)) queryClient.clear()
+      if (next && claimPersistedCache(next.user.id)) {
+        queryClient.clear()
+        clearDrafts()
+      }
       setSession(next)
     }
 
@@ -30,6 +34,7 @@ export function useSession() {
       if (event === 'SIGNED_OUT') {
         queryClient.clear()
         clearPersistedCache()
+        clearDrafts()
       }
     })
     return () => data.subscription.unsubscribe()

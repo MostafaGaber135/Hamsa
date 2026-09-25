@@ -3,6 +3,7 @@ import type { Message } from '@/types/chat'
 /** One line describing the last message, for the conversation list. */
 export function messagePreview(m: Message | undefined, t: Strings): string {
   if (!m) return ''
+  if (m.deletedAt) return t.msg.deleted
   switch (m.kind) {
     case 'image': return m.content ? `📷 ${m.content}` : t.photo
     case 'video': return m.content ? `🎬 ${m.content}` : t.rich.video

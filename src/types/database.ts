@@ -175,6 +175,12 @@ export type Database = {
           created_at: string
           kind: string
           attachment: Json | null
+          reply_to_id: string | null
+          edited_at: string | null
+          deleted_at: string | null
+          mentions: string[]
+          pinned_at: string | null
+          pinned_by: string | null
         }
         Insert: {
           id?: string
@@ -185,6 +191,12 @@ export type Database = {
           created_at?: string
           kind?: string
           attachment?: Json | null
+          reply_to_id?: string | null
+          edited_at?: string | null
+          deleted_at?: string | null
+          mentions?: string[]
+          pinned_at?: string | null
+          pinned_by?: string | null
         }
         Update: {
           id?: string
@@ -195,6 +207,12 @@ export type Database = {
           created_at?: string
           kind?: string
           attachment?: Json | null
+          reply_to_id?: string | null
+          edited_at?: string | null
+          deleted_at?: string | null
+          mentions?: string[]
+          pinned_at?: string | null
+          pinned_by?: string | null
         }
         Relationships: [
           {
@@ -209,6 +227,34 @@ export type Database = {
             columns: ['sender_id']
             isOneToOne: false
             referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      message_reactions: {
+        Row: { message_id: string; user_id: string; emoji: string; created_at: string }
+        Insert: { message_id: string; user_id: string; emoji: string; created_at?: string }
+        Update: { message_id?: string; user_id?: string; emoji?: string; created_at?: string }
+        Relationships: [
+          {
+            foreignKeyName: 'message_reactions_message_id_fkey'
+            columns: ['message_id']
+            isOneToOne: false
+            referencedRelation: 'messages'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      saved_messages: {
+        Row: { user_id: string; message_id: string; created_at: string }
+        Insert: { user_id?: string; message_id: string; created_at?: string }
+        Update: { user_id?: string; message_id?: string; created_at?: string }
+        Relationships: [
+          {
+            foreignKeyName: 'saved_messages_message_id_fkey'
+            columns: ['message_id']
+            isOneToOne: false
+            referencedRelation: 'messages'
             referencedColumns: ['id']
           },
         ]
@@ -240,7 +286,56 @@ export type Database = {
           wallpaper: string | null
           my_role: string
           is_request: boolean
+          description: string | null
+          invite_code: string | null
         }[]
+      }
+      edit_message: {
+        Args: { msg_id: string; new_content: string }
+        Returns: undefined
+      }
+      delete_message: {
+        Args: { msg_id: string }
+        Returns: undefined
+      }
+      react: {
+        Args: { msg_id: string; emoji: string | null }
+        Returns: undefined
+      }
+      pin_message: {
+        Args: { msg_id: string; pinned: boolean }
+        Returns: undefined
+      }
+      search_messages: {
+        Args: { query: string; conv_id?: string | null }
+        Returns: { id: string; conversation_id: string; sender_id: string; content: string; created_at: string }[]
+      }
+      report: {
+        Args: { target_user: string; msg_id: string | null; reason: string; details?: string | null }
+        Returns: undefined
+      }
+      set_group_description: {
+        Args: { conv_id: string; new_description: string }
+        Returns: undefined
+      }
+      set_group_invite: {
+        Args: { conv_id: string; enabled: boolean }
+        Returns: string | null
+      }
+      get_group_invite: {
+        Args: { code: string }
+        Returns: {
+          conversation_id: string
+          name: string
+          avatar_url: string | null
+          description: string | null
+          member_count: number
+          already_member: boolean
+        }[]
+      }
+      join_group_by_invite: {
+        Args: { code: string }
+        Returns: string
       }
       accept_message_request: {
         Args: { conv_id: string }

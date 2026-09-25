@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import type { ConversationItem } from '@/features/conversations/ConversationList'
@@ -8,9 +8,12 @@ import { EmptyState } from '@/features/conversations/EmptyState'
 import { conversationKeys, useConversationAction, useConversations, useMarkRead, useProfile } from '@/features/conversations/queries'
 import { useFriendships } from '@/features/friends/queries'
 import { Sidebar, type Filter } from '@/features/conversations/Sidebar'
+import { CallOverlay } from '@/features/calls/CallOverlay'
+import { useCall } from '@/features/calls/useCall'
 import { ChatPane } from '@/features/messages/ChatPane'
 import type { Draft } from '@/features/messages/Composer'
-import { useMessages, useSendMessage } from '@/features/messages/queries'
+import type { JumpTarget } from '@/features/messages/MessageThread'
+import { useMessageSearch, useMessages, useSendMessage } from '@/features/messages/queries'
 import { useBlockState, usePrivacySettings, useSetBlocked } from '@/features/privacy/queries'
 import { useLiveUpdates, type Connection } from '@/features/realtime/useLiveUpdates'
 import { useConversationChannels } from '@/features/realtime/useConversationChannels'
@@ -19,6 +22,7 @@ import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
 import { goBack, navigate, useRoute } from '@/lib/router'
 import { withStatus } from '@/lib/status'
+import { useDebounced } from '@/lib/useDebounced'
 import { detachPush, resyncPush } from '@/lib/push'
 import { supabase } from '@/lib/supabase'
 import type { Theme } from '@/lib/theme'
@@ -35,6 +39,7 @@ const FriendsPage = lazy(() => import('@/features/friends/FriendsPage').then((m)
 const ProfilePage = lazy(() => import('@/features/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })))
 const MediaViewer = lazy(() => import('@/features/messages/MediaViewer').then((m) => ({ default: m.MediaViewer })))
 const SharePage = lazy(() => import('@/features/share/SharePage').then((m) => ({ default: m.SharePage })))
+const JoinPage = lazy(() => import('@/features/conversations/JoinPage').then((m) => ({ default: m.JoinPage })))
 
 interface ChatAppProps {
   userId: string
@@ -52,12 +57,15 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
   // The URL decides what's on screen: /c/<id>, /friends, /profile, /share, or the list.
   const route = useRoute()
   const selectedId = route.name === 'chat' ? route.id : null
-  const view = route.name === 'friends' || route.name === 'profile' || route.name === 'share' ? route.name : 'chat'
+  const view =
+    route.name === 'friends' || route.name === 'profile' || route.name === 'share' || route.name === 'join' ? route.name : 'chat'
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [newChatOpen, setNewChatOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [viewer, setViewer] = useState<{ items: Message[]; startId: string } | null>(null)
+  // A message to scroll to once its chat is open (from search).
+  const [jump, setJump] = useState<{ conversationId: string; target: JumpTarget } | null>(null)
   const friendships = useFriendships()
   const friendRequests = (friendships.data ?? []).filter((f) => f.status === 'incoming').length
   const qc = useQueryClient()
@@ -115,8 +123,26 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
   // You appear online only once your setting is known, only if it allows it,
   // and never in a message request you haven't accepted.
   const privacy = usePrivacySettings(userId)
-  const channels = useConversationChannels(conversationIds, userId, privacy.data?.presence === 'contacts', requestIds)
+  // Call signals arrive on the same channels; the call hook is created just below.
+  const callSignal = useRef<(conversationId: string, signal: unknown) => void>(undefined)
+  const channels = useConversationChannels(
+    conversationIds, userId, privacy.data?.presence === 'contacts', requestIds,
+    (conversationId, signal) => callSignal.current?.(conversationId, signal),
+  )
   const { online, wentOfflineAt, typing } = channels
+
+  // ---- Calls (one-to-one) ----
+  const peerOf = useCallback(
+    (conversationId: string) => {
+      const conversation = rawConversations?.find((c) => c.id === conversationId)
+      return conversation && !conversation.isGroup ? conversation.members.find((m) => m.id !== userId) : undefined
+    },
+    [rawConversations, userId],
+  )
+  const call = useCall({ userId, peerOf, send: channels.sendCallSignal })
+  useEffect(() => {
+    callSignal.current = call.handleSignal
+  })
 
   // Server data + live data: online dots, "last seen", and who's typing.
   const conversations = useMemo<Conversation[]>(() => {
@@ -159,6 +185,23 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
       .filter((it) => filter !== 'groups' || it.conversation.isGroup)
       .filter((it) => it.title.toLocaleLowerCase().includes(q))
   }, [conversations, me.id, users, query, filter])
+
+  // Message search, alongside the chat names, once you've typed two characters.
+  const searchQuery = useDebounced(query, 300)
+  const messageSearch = useMessageSearch(searchQuery)
+  const messageResults = useMemo(() => {
+    if (searchQuery.trim().length < 2) return undefined
+    const titles = new Map(items.map((it) => [it.conversation.id, it.title]))
+    for (const c of conversations) {
+      if (!titles.has(c.id)) titles.set(c.id, c.name ?? c.members.find((m) => m.id !== me.id)?.name ?? '')
+    }
+    return (messageSearch.data ?? []).map((r) => ({ ...r, title: titles.get(r.conversationId) ?? '' }))
+  }, [searchQuery, messageSearch.data, items, conversations, me.id])
+
+  function openMessage(conversationId: string, messageId: string) {
+    openConversation(conversationId)
+    setJump({ conversationId, target: { id: messageId, key: Date.now() } })
+  }
 
   const selected = conversations.find((c) => c.id === selectedId)
   // On mobile the sidebar and the main pane take turns filling the screen.
@@ -237,6 +280,9 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
         onOpenProfile={() => (view === 'profile' ? goBack() : navigate({ name: 'profile' }))}
         profileActive={view === 'profile'}
         friendRequests={friendRequests}
+        messageResults={messageResults}
+        searchingMessages={messageSearch.isFetching}
+        onOpenMessage={openMessage}
       />
 
       <main
@@ -255,6 +301,8 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
           />
         ) : view === 'share' ? (
           <SharePage conversations={conversations} me={me} onBack={goBack} />
+        ) : route.name === 'join' ? (
+          <JoinPage code={route.code} onBack={goBack} />
         ) : view === 'friends' ? (
           <FriendsPage
             currentUserId={me.id}
@@ -275,6 +323,8 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
             onToggleDetails={() => setDetailsOpen((open) => !open)}
             onBack={goBack}
             onAction={(action) => handleConversationAction(selected.id, action)}
+            jumpTarget={jump?.conversationId === selected.id ? jump.target : undefined}
+            onCall={selected.isGroup ? undefined : (video) => call.start(selected.id, video)}
           />
         ) : (
           <EmptyState onNewChat={() => setNewChatOpen(true)} />
@@ -314,6 +364,8 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
         />
       )}
       </Suspense>
+
+      <CallOverlay call={call} />
     </div>
   )
 }
@@ -336,11 +388,13 @@ interface OpenConversationProps {
   onAction: (action: ConversationAction) => void
   detailsOpen: boolean
   onToggleDetails: () => void
+  jumpTarget?: JumpTarget
+  onCall?: (video: boolean) => void
 }
 
 /** Its own component so each open conversation gets its own message query and send mutation. */
 function OpenConversation({
-  conversation, me, users, connection, onTyping, onSent, onBack, onAction, detailsOpen, onToggleDetails,
+  conversation, me, users, connection, onTyping, onSent, onBack, onAction, detailsOpen, onToggleDetails, jumpTarget, onCall,
 }: OpenConversationProps) {
   const { t } = useLocale()
   const messagesQuery = useMessages(conversation.id, conversation.clearedAt)
@@ -371,6 +425,7 @@ function OpenConversation({
       imageUrl: draft.kind === 'image' ? local : undefined,
       fileUrl: draft.kind !== 'image' ? local : undefined,
       createdAt: new Date().toISOString(),
+      replyToId: draft.replyToId,
     })
   }
 
@@ -403,6 +458,8 @@ function OpenConversation({
       connection={connection}
       detailsOpen={detailsOpen}
       onToggleDetails={onToggleDetails}
+      jumpTarget={jumpTarget}
+      onCall={onCall}
       blocked={blocked}
       onUnblock={peer && (() => setBlocked.mutate({ userId: peer.id, blocked: false }))}
       request={

@@ -44,6 +44,8 @@ interface MessageRecord {
   content: string | null
   kind: string
   attachment: { name?: string } | null
+  /** Group members @mentioned: they're notified even if they muted the group. */
+  mentions?: string[] | null
 }
 
 function preview(m: MessageRecord) {
@@ -70,11 +72,12 @@ Deno.serve(async (req) => {
     return Response.json({ skipped: true })
   }
 
-  // Everyone in the conversation except the sender, minus people who muted it
-  // or haven't accepted it yet (a message request from a stranger).
+  // Everyone in the conversation except the sender, minus people who muted it (unless
+  // they're @mentioned) or haven't accepted it yet (a message request from a stranger).
   const { data: recipients, error } = await supabase.rpc('push_recipients', {
     conv_id: m.conversation_id,
     sender: m.sender_id,
+    mentioned: m.mentions ?? [],
   })
   if (error) return Response.json({ error: error.message }, { status: 500 })
   if (!recipients?.length) return Response.json({ sent: 0 })

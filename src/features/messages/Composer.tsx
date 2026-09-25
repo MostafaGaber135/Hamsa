@@ -1,16 +1,21 @@
-import { ArrowRight, CircleAlert, FileText, Image as ImageIcon, MapPin, Mic, Paperclip, Smile, Trash2, X } from 'lucide-react'
+import {
+  ArrowRight, Check, CircleAlert, FileText, Image as ImageIcon, MapPin, Mic, Paperclip, Pencil, Reply, Smile, Trash2, X,
+} from 'lucide-react'
 import {
   lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent,
 } from 'react'
+import { Avatar } from '@/components/ui/Avatar'
 import { IconButton, focusRing } from '@/components/ui/Button'
 import { Menu, type MenuAnchor } from '@/components/ui/Menu'
 import { Spinner } from '@/components/ui/Spinner'
+import { messagePreview } from '@/features/conversations/preview'
 import { formatBytes, formatDuration, textDirection } from '@/lib/bidi'
 import { locate, type LocationProblem } from '@/lib/geolocation'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
-import type { Attachment, MessageKind } from '@/types/chat'
+import type { Attachment, Message, MessageKind, User } from '@/types/chat'
 import { MAX_FILE_BYTES, MAX_IMAGE_BYTES, kindForFile } from './api'
+import { getDraft, setDraft } from './drafts'
 import { peekShare, takeShare } from './sharedIn'
 import { useVoiceRecorder } from './useVoiceRecorder'
 
@@ -18,15 +23,17 @@ import { useVoiceRecorder } from './useVoiceRecorder'
 const ExpressionPicker = lazy(() => import('./ExpressionPicker').then((m) => ({ default: m.ExpressionPicker })))
 
 const MAX_LINES = 6
-
-// Unsent text per conversation, so switching chats doesn't lose what you were writing.
-const drafts = new Map<string, string>()
+/** Photos, videos and files you can add to one send. */
+const MAX_FILES = 10
+/** "@" and the start of a username, right before the caret. */
+const MENTION_QUERY = /(^|\s)@([a-z0-9_]{0,24})$/i
 
 export interface Draft {
   kind: MessageKind
   content?: string
   file?: File
   attachment?: Attachment
+  replyToId?: string
 }
 
 interface Pending {
@@ -41,30 +48,55 @@ interface ComposerProps {
   onSend: (draft: Draft) => void
   /** Called on every keystroke (the typing hook throttles it). */
   onTyping?: () => void
+  /** The message you're replying to, and who wrote it. */
+  replyTo?: { message: Message; senderName: string }
+  onCancelReply?: () => void
+  /** Your message being edited: the box holds its text until you save or cancel. */
+  editing?: Message
+  onSaveEdit?: (message: Message, content: string) => void
+  onCancelEdit?: () => void
+  /** Group members you can @mention (not you). Empty in one-to-one chats. */
+  mentionable?: User[]
 }
 
-export function Composer({ conversationId, recipientName, onSend, onTyping }: ComposerProps) {
+export function Composer({
+  conversationId, recipientName, onSend, onTyping, replyTo, onCancelReply, editing, onSaveEdit, onCancelEdit,
+  mentionable = [],
+}: ComposerProps) {
   const { t, lang, dir, locale } = useLocale()
   const [shared] = useState(() => peekShare(conversationId))
-  const [text, setText] = useState(() => shared?.text || drafts.get(conversationId) || '')
-  const [pending, setPending] = useState<Pending | null>(null)
+  const [text, setText] = useState(() => shared?.text || getDraft(conversationId))
+  const [pending, setPending] = useState<Pending[]>([])
   const [error, setError] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [attachMenu, setAttachMenu] = useState<MenuAnchor | null>(null)
   const [locating, setLocating] = useState(false)
   const [dragging, setDragging] = useState(false)
+  const [caret, setCaret] = useState(0)
+  const [mentionIndex, setMentionIndex] = useState(0)
+  const [mentionClosed, setMentionClosed] = useState(false)
   const fieldRef = useRef<HTMLTextAreaElement>(null)
   const mediaRef = useRef<HTMLInputElement>(null)
   const docRef = useRef<HTMLInputElement>(null)
+  const draftBeforeEdit = useRef('')
 
   const recorder = useVoiceRecorder((recording) =>
     onSend({ kind: 'voice', file: recording.file, attachment: { durationMs: recording.durationMs, waveform: recording.waveform } }),
   )
-  const canSend = text.trim().length > 0 || pending !== null
+  const canSend = text.trim().length > 0 || pending.length > 0
   const shownError =
     error ?? (recorder.error === 'blocked' ? t.rich.micBlocked : recorder.error === 'unsupported' ? t.rich.micUnsupported : null)
   // The field follows the language you type in; empty, it follows the interface.
   const textDir = textDirection(text, dir)
+
+  // @mentions: suggest members whose username or name starts with what you typed.
+  const mentionMatch = mentionable.length > 0 && !mentionClosed ? text.slice(0, caret).match(MENTION_QUERY) : null
+  const mentionQuery = mentionMatch?.[2].toLowerCase() ?? ''
+  const suggestions = mentionMatch
+    ? mentionable
+        .filter((u) => u.username?.startsWith(mentionQuery) || u.name.toLowerCase().startsWith(mentionQuery))
+        .slice(0, 6)
+    : []
 
   // Grow with the content up to 6 lines, then scroll.
   useLayoutEffect(() => {
@@ -79,40 +111,98 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
   useEffect(() => {
     if (!shared) return
     takeShare(conversationId)
-    if (shared.file) attach(shared.file)
+    if (shared.file) attach([shared.file])
     // Only on arrival; attach is stable enough for this one-off use.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Free the preview's memory when it's replaced or the composer goes away.
+  // Editing: the box shows the message's text; cancelling brings your draft back.
+  const editingId = editing?.id
+  useEffect(() => {
+    if (!editingId) return
+    draftBeforeEdit.current = getDraft(conversationId)
+    setText(editing?.content ?? '')
+    fieldRef.current?.focus()
+    // Only when a different message starts being edited.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingId])
+
+  // Replying puts you straight in the box.
+  const replyId = replyTo?.message.id
+  useEffect(() => {
+    if (replyId) fieldRef.current?.focus()
+  }, [replyId])
+
+  // Free the previews' memory when they're replaced or the composer goes away.
   useEffect(() => () => {
-    if (pending?.url) URL.revokeObjectURL(pending.url)
+    for (const p of pending) if (p.url) URL.revokeObjectURL(p.url)
   }, [pending])
 
   function updateText(value: string) {
     setText(value)
-    if (value) drafts.set(conversationId, value)
-    else drafts.delete(conversationId)
+    setMentionClosed(false)
+    // While editing, the box holds the message, not your draft.
+    if (!editing) setDraft(conversationId, value)
   }
 
-  function attach(file: File | undefined) {
-    if (!file) return
-    const kind = kindForFile(file)
-    if (kind === 'image' && file.size > MAX_IMAGE_BYTES) return setError(t.composer.imageTooBig)
-    if (file.size > MAX_FILE_BYTES) return setError(t.rich.fileTooBig)
-    setError(null)
-    setPending({ file, kind, url: kind === 'image' || kind === 'video' ? URL.createObjectURL(file) : undefined })
+  function attach(files: File[]) {
+    const accepted: Pending[] = []
+    for (const file of files.slice(0, MAX_FILES - pending.length)) {
+      const kind = kindForFile(file)
+      if (kind === 'image' && file.size > MAX_IMAGE_BYTES) {
+        setError(t.composer.imageTooBig)
+        continue
+      }
+      if (file.size > MAX_FILE_BYTES) {
+        setError(t.rich.fileTooBig)
+        continue
+      }
+      accepted.push({ file, kind, url: kind === 'image' || kind === 'video' ? URL.createObjectURL(file) : undefined })
+    }
+    if (accepted.length === 0) return
+    if (accepted.length === files.length) setError(null)
+    setPending((current) => [...current, ...accepted])
     fieldRef.current?.focus()
+  }
+
+  function stopEditing() {
+    setText(draftBeforeEdit.current)
+    onCancelEdit?.()
   }
 
   function send() {
     if (!canSend) return
     const content = text.trim() || undefined
-    onSend(pending ? { kind: pending.kind, file: pending.file, content } : { kind: 'text', content })
+
+    if (editing) {
+      if (content && content !== editing.content) onSaveEdit?.(editing, content)
+      stopEditing()
+      return
+    }
+
+    const replyToId = replyTo?.message.id
+    if (pending.length === 0) {
+      onSend({ kind: 'text', content, replyToId })
+    } else {
+      // One message per file; the text becomes the first one's caption.
+      pending.forEach((p, i) => onSend({ kind: p.kind, file: p.file, content: i === 0 ? content : undefined, replyToId: i === 0 ? replyToId : undefined }))
+    }
     updateText('')
-    setPending(null)
+    setPending([])
     setError(null)
+    onCancelReply?.()
     fieldRef.current?.focus()
+  }
+
+  function insertMention(user: User) {
+    if (!mentionMatch || !user.username) return
+    const before = text.slice(0, caret).replace(MENTION_QUERY, `$1@${user.username} `)
+    const next = before + text.slice(caret)
+    updateText(next)
+    requestAnimationFrame(() => {
+      fieldRef.current?.setSelectionRange(before.length, before.length)
+      setCaret(before.length)
+    })
   }
 
   async function shareLocation() {
@@ -141,27 +231,48 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    // The mention list takes ↑/↓, Enter/Tab and Esc while it's open.
+    if (suggestions.length > 0) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const step = e.key === 'ArrowDown' ? 1 : -1
+        setMentionIndex((i) => (i + step + suggestions.length) % suggestions.length)
+        return
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        insertMention(suggestions[Math.min(mentionIndex, suggestions.length - 1)])
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setMentionClosed(true)
+        return
+      }
+    }
     // isComposing: don't send while an IME (e.g. Arabic on some keyboards) is mid-word.
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       send()
     }
-    if (e.key === 'Escape') fieldRef.current?.blur()
+    if (e.key === 'Escape') {
+      if (editing) stopEditing()
+      else if (replyTo) onCancelReply?.()
+      else fieldRef.current?.blur()
+    }
   }
 
-  // Pasting a screenshot or a copied file attaches it.
+  // Pasting a screenshot or copied files attaches them.
   function handlePaste(e: ClipboardEvent<HTMLTextAreaElement>) {
-    const file = e.clipboardData.files[0]
-    if (file) {
-      e.preventDefault()
-      attach(file)
-    }
+    if (editing || e.clipboardData.files.length === 0) return
+    e.preventDefault()
+    attach([...e.clipboardData.files])
   }
 
   function handleDrop(e: DragEvent) {
     e.preventDefault()
     setDragging(false)
-    attach(e.dataTransfer.files[0])
+    if (!editing) attach([...e.dataTransfer.files])
   }
 
   function insertEmoji(emoji: string) {
@@ -174,9 +285,10 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
   }
 
   const icon = { size: 18, strokeWidth: 1.75 }
+  const trackCaret = () => setCaret(fieldRef.current?.selectionStart ?? 0)
 
   return (
-    <div>
+    <div className="relative">
       {(shownError || locating) && (
         <p role={shownError ? 'alert' : 'status'} className={cn('mb-2 flex items-center gap-2 px-2 text-caption', shownError ? 'text-danger' : 'text-ink-muted')}>
           {locating ? <Spinner /> : <CircleAlert size={14} strokeWidth={2} aria-hidden />}
@@ -197,6 +309,33 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
         </p>
       )}
 
+      {/* @mention suggestions, above the box. */}
+      {suggestions.length > 0 && (
+        <ul
+          role="listbox"
+          aria-label={t.msg.mention}
+          className="absolute inset-x-2 bottom-full z-20 mb-2 overflow-hidden rounded-2xl bg-surface-raised py-1 shadow-lg ring-1 ring-line"
+        >
+          {suggestions.map((user, i) => (
+            <li key={user.id} role="option" aria-selected={i === mentionIndex}>
+              <button
+                type="button"
+                // mousedown, so the text box keeps its focus and caret.
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  insertMention(user)
+                }}
+                className={cn('flex w-full items-center gap-3 px-3 py-1.5 text-start', i === mentionIndex ? 'bg-surface-hover' : 'hover:bg-surface-hover')}
+              >
+                <Avatar id={user.id} name={user.name} src={user.avatarUrl} size="xs" />
+                <span dir="auto" className="min-w-0 truncate text-body font-semibold text-ink">{user.name}</span>
+                <span dir="ltr" className="truncate text-caption text-ink-muted">@{user.username}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
       <div
         onDragOver={(e) => {
           e.preventDefault()
@@ -212,34 +351,58 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
           dragging && 'shadow-[0_0_0_4px_var(--accent-soft)] ring-[1.5px] ring-accent',
         )}
       >
-        {/* The attachment waiting to be sent, with a preview. */}
-        {pending && (
-          <div className="px-2 pt-1.5 pb-1">
-            <span className="relative inline-flex max-w-full">
-              {pending.kind === 'image' ? (
-                <img src={pending.url} alt="" className="size-20 rounded-xl object-cover ring-1 ring-line" />
-              ) : pending.kind === 'video' ? (
-                <video src={pending.url} muted playsInline className="size-20 rounded-xl bg-black object-cover ring-1 ring-line" />
-              ) : (
-                <span className="flex max-w-72 items-center gap-3 rounded-xl bg-surface-sunken py-2 ps-2 pe-4 ring-1 ring-line">
-                  <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
-                    <FileText size={20} strokeWidth={1.75} aria-hidden />
-                  </span>
-                  <span className="min-w-0">
-                    <span dir="auto" className="block truncate text-body font-semibold text-ink">{pending.file.name}</span>
-                    <span className="block text-caption text-ink-muted">{formatBytes(pending.file.size, locale)}</span>
-                  </span>
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => setPending(null)}
-                aria-label={t.rich.removeAttachment}
-                className="absolute -inset-e- -top-2 inline-flex size-6 items-center justify-center rounded-full bg-ink text-canvas shadow-sm hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-              >
-                <X size={14} strokeWidth={2.5} aria-hidden />
-              </button>
+        {/* Replying to or editing a message. */}
+        {(replyTo || editing) && (
+          <div className="mx-1.5 mt-1 mb-1 flex items-center gap-2 rounded-xl border-s-4 border-accent bg-surface-sunken py-1.5 ps-2 pe-1">
+            {editing ? (
+              <Pencil size={16} strokeWidth={1.75} className="shrink-0 text-accent" aria-hidden />
+            ) : (
+              <Reply size={16} strokeWidth={1.75} className="shrink-0 text-accent rtl:-scale-x-100" aria-hidden />
+            )}
+            <span className="min-w-0 flex-1">
+              <span className="block text-caption font-bold text-accent">
+                {editing ? t.msg.editing : t.msg.replyingTo(replyTo!.senderName)}
+              </span>
+              <span dir="auto" className="block truncate text-caption text-ink-muted">
+                {messagePreview(editing ?? replyTo!.message, t)}
+              </span>
             </span>
+            <IconButton size="sm" label={editing ? t.msg.cancelEdit : t.msg.cancelReply} onClick={editing ? stopEditing : onCancelReply}>
+              <X size={16} strokeWidth={2} />
+            </IconButton>
+          </div>
+        )}
+
+        {/* The attachments waiting to be sent, with previews. */}
+        {pending.length > 0 && (
+          <div className="flex gap-3 overflow-x-auto px-2 pt-1.5 pb-1">
+            {pending.map((p, i) => (
+              <span key={`${p.file.name}-${i}`} className="relative inline-flex max-w-full shrink-0">
+                {p.kind === 'image' ? (
+                  <img src={p.url} alt="" className="size-20 rounded-xl object-cover ring-1 ring-line" />
+                ) : p.kind === 'video' ? (
+                  <video src={p.url} muted playsInline className="size-20 rounded-xl bg-black object-cover ring-1 ring-line" />
+                ) : (
+                  <span className="flex max-w-72 items-center gap-3 rounded-xl bg-surface-sunken py-2 ps-2 pe-4 ring-1 ring-line">
+                    <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
+                      <FileText size={20} strokeWidth={1.75} aria-hidden />
+                    </span>
+                    <span className="min-w-0">
+                      <span dir="auto" className="block truncate text-body font-semibold text-ink">{p.file.name}</span>
+                      <span className="block text-caption text-ink-muted">{formatBytes(p.file.size, locale)}</span>
+                    </span>
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setPending((current) => current.filter((_, j) => j !== i))}
+                  aria-label={`${t.rich.removeAttachment} ${p.file.name}`}
+                  className="absolute -inset-e-2 -top-2 inline-flex size-6 items-center justify-center rounded-full bg-ink text-canvas shadow-sm hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                >
+                  <X size={14} strokeWidth={2.5} aria-hidden />
+                </button>
+              </span>
+            ))}
           </div>
         )}
 
@@ -275,14 +438,16 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
           </div>
         ) : (
           <div className="flex items-end gap-1">
-            <IconButton
-              label={t.rich.attach}
-              active={attachMenu !== null}
-              aria-haspopup="menu"
-              onClick={(e) => setAttachMenu(attachMenu ? null : { element: e.currentTarget })}
-            >
-              <Paperclip size={20} strokeWidth={1.75} />
-            </IconButton>
+            {!editing && (
+              <IconButton
+                label={t.rich.attach}
+                active={attachMenu !== null}
+                aria-haspopup="menu"
+                onClick={(e) => setAttachMenu(attachMenu ? null : { element: e.currentTarget })}
+              >
+                <Paperclip size={20} strokeWidth={1.75} />
+              </IconButton>
+            )}
             {attachMenu && (
               <Menu
                 anchor={attachMenu}
@@ -299,22 +464,24 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
               ref={mediaRef}
               type="file"
               accept="image/*,video/*"
+              multiple
               className="sr-only"
               tabIndex={-1}
               aria-hidden
               onChange={(e) => {
-                attach(e.target.files?.[0])
+                attach([...(e.target.files ?? [])])
                 e.target.value = ''
               }}
             />
             <input
               ref={docRef}
               type="file"
+              multiple
               className="sr-only"
               tabIndex={-1}
               aria-hidden
               onChange={(e) => {
-                attach(e.target.files?.[0])
+                attach([...(e.target.files ?? [])])
                 e.target.value = ''
               }}
             />
@@ -326,12 +493,16 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
               value={text}
               onChange={(e) => {
                 updateText(e.target.value)
-                if (e.target.value) onTyping?.()
+                setCaret(e.target.selectionStart)
+                setMentionIndex(0)
+                if (e.target.value && !editing) onTyping?.()
               }}
+              onSelect={trackCaret}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
               placeholder={t.writeMessage}
               aria-label={t.messageTo(recipientName)}
+              aria-autocomplete={mentionable.length > 0 ? 'list' : undefined}
               className={cn(
                 'min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-ink caret-accent outline-none placeholder:text-ink-muted',
                 // The placeholder follows the interface even when dir flips for the text.
@@ -355,7 +526,8 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
                   <ExpressionPicker
                     onEmoji={insertEmoji}
                     onSticker={(id) => {
-                      onSend({ kind: 'sticker', content: id })
+                      onSend({ kind: 'sticker', content: id, replyToId: replyTo?.message.id })
+                      onCancelReply?.()
                       setPickerOpen(false)
                     }}
                     onClose={() => {
@@ -367,18 +539,22 @@ export function Composer({ conversationId, recipientName, onSend, onTyping }: Co
               )}
             </span>
 
-            {canSend ? (
+            {canSend || editing ? (
               <button
                 type="button"
                 onClick={send}
-                aria-label={t.send}
-                title={t.send}
+                aria-label={editing ? t.details.save : t.send}
+                title={editing ? t.details.save : t.send}
                 className={cn(
                   'inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent transition-[background-color,transform] duration-150 hover:bg-accent-strong active:scale-94 motion-reduce:active:scale-100',
                   focusRing,
                 )}
               >
-                <ArrowRight size={20} strokeWidth={2} className="rtl:-scale-x-100" aria-hidden />
+                {editing ? (
+                  <Check size={20} strokeWidth={2.25} aria-hidden />
+                ) : (
+                  <ArrowRight size={20} strokeWidth={2} className="rtl:-scale-x-100" aria-hidden />
+                )}
               </button>
             ) : (
               <IconButton label={t.rich.record} onClick={recorder.start}>
