@@ -31,13 +31,31 @@ export async function setBlocked(userId: string, blocked: boolean) {
   if (error) throw error
 }
 
-export async function fetchGroupInvites(userId: string): Promise<GroupInvites> {
-  const { data, error } = await supabase.from('profiles').select('group_invites').eq('id', userId).single()
-  if (error) throw error
-  return data.group_invites === 'friends' ? 'friends' : 'everyone'
+/** Who sees when you're online and your "last seen": people you chat with, or nobody. */
+export type PresenceVisibility = 'contacts' | 'nobody'
+
+export interface PrivacySettings {
+  groupInvites: GroupInvites
+  presence: PresenceVisibility
 }
 
-export async function updateGroupInvites(userId: string, value: GroupInvites) {
-  const { error } = await supabase.from('profiles').update({ group_invites: value }).eq('id', userId)
+export async function fetchPrivacySettings(userId: string): Promise<PrivacySettings> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('group_invites, presence_visibility')
+    .eq('id', userId)
+    .single()
+  if (error) throw error
+  return {
+    groupInvites: data.group_invites === 'friends' ? 'friends' : 'everyone',
+    presence: data.presence_visibility === 'nobody' ? 'nobody' : 'contacts',
+  }
+}
+
+export async function updatePrivacySettings(userId: string, changes: Partial<PrivacySettings>) {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ group_invites: changes.groupInvites, presence_visibility: changes.presence })
+    .eq('id', userId)
   if (error) throw error
 }

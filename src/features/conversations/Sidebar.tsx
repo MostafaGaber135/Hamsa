@@ -9,11 +9,13 @@ import { useLocale } from '@/lib/i18n'
 import type { ConversationAction, User } from '@/types/chat'
 import { ConversationList, type ConversationItem } from './ConversationList'
 
-export type Filter = 'all' | 'unread' | 'groups'
+export type Filter = 'all' | 'unread' | 'groups' | 'requests'
 
 interface SidebarProps {
   items: ConversationItem[]
   unreadTotal: number
+  /** Message requests from people who aren't your friends. */
+  requestCount: number
   selectedId: string | null
   currentUser: User
   query: string
@@ -46,6 +48,10 @@ export function Sidebar(props: SidebarProps) {
     { id: 'unread', label: unreadTotal > 0 ? t.filterUnreadCount(fmt.number(unreadTotal)) : t.filterUnread },
     { id: 'groups', label: t.filterGroups },
   ]
+  // The requests tab only shows up when there is something in it (or you're on it).
+  if (props.requestCount > 0 || filter === 'requests') {
+    filters.push({ id: 'requests', label: t.filterRequests(fmt.number(props.requestCount)) })
+  }
 
   return (
     <aside className={cn('flex min-h-0 flex-col bg-surface md:rounded-3xl md:shadow-xs', props.className)}>
@@ -82,7 +88,7 @@ export function Sidebar(props: SidebarProps) {
           />
         </label>
 
-        <div className="mt-3 flex gap-1" role="group">
+        <div className="mt-3 flex flex-wrap gap-1" role="group">
           {filters.map((f) => (
             <button
               key={f.id}

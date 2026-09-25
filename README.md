@@ -49,7 +49,7 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 - Smart scrolling: follows new messages when you're at the bottom, shows a "new messages" button when you're reading history, and loads older messages as you scroll up
 
 **Presence**
-- Online status and "last seen"
+- Online status and "last seen", visible only to people you chat with — or to nobody, if you choose
 - Push notifications for new messages, even when Hamsa is closed (Web Push, installable as an app)
 - "Sara is typing…" in the chat, the header and the conversation list
 
@@ -58,6 +58,8 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 - Friends: search people, send, accept, decline and cancel requests
 - Block people from a chat's info panel: they can't message you, start a chat or send a friend request; unblock any time from your profile
 - Choose who can add you to groups: everyone, or only your friends
+- Message requests: a chat a stranger starts waits in its own tab, without notifications or read receipts, until you accept, reply, delete or block
+- Delete your account from your profile, permanently
 - Conversation menu: pin, mute, mark as read / unread, delete chat (for you only), leave group — via the ⋯ button, right-click, or Shift + F10
 
 **Account**
@@ -131,7 +133,10 @@ All access rules live in the database, not in the frontend, so they hold even if
 - **Column-level privileges.** On your own profile you can edit only your name, username and photo — never your id or timestamps.
 - **The server owns time.** A trigger sets `created_at`, so messages can't be back-dated.
 - **Attachments are validated twice.** The database rejects attachments with the wrong types, a location without valid coordinates, or more than 4 KB of JSON. The app also checks every field it reads, and each message renders inside its own error boundary, so one bad message can never blank out a chat.
-- **Private Realtime channels.** Typing channels (`typing:<conversation-id>`) are restricted to that conversation's members by policies on `realtime.messages`.
+- **Private Realtime channels.** Each conversation's channel (`typing:<conversation-id>`) carries typing and online status, and policies on `realtime.messages` let only its members in — never a one-to-one chat where either person blocked the other. There is no channel where everyone sees everyone.
+- **"Last seen" is not a public column.** Column privileges hide `last_seen_at`; it's only handed out through a function that checks you share a chat, it isn't hidden, nobody blocked anyone, and it isn't an unaccepted message request.
+- **Rate limit.** A trigger refuses more than 15 messages per person in 10 seconds.
+- **Nothing left behind.** Files whose message was never saved, or whose chat is gone, and replaced photos are deleted by a scheduled Edge Function. Deleting an account deletes the profile, messages, one-to-one chats, friendships and devices; groups get a new admin if needed.
 - **Private file storage.** Chat images, voice notes and documents are only reachable through short-lived signed URLs, and only members can upload to a conversation's folder.
 - **Admin-only group changes.** Renaming, the group photo and membership changes are checked in the database, not just hidden in the UI. A group can never lose its last admin.
 - **Blocking is enforced by the database.** The messages policy refuses writes into a blocked one-to-one chat, and new chats, friend requests and group invites check blocks and each person's group setting. Nobody can look up who blocked whom.
@@ -233,6 +238,19 @@ Supabase's built-in email only sends to your own team, so real users need your o
    function `send-push`, and an HTTP header `x-webhook-secret` with the same secret.
 6. In Hamsa: **My profile → Notifications → Turn on**. On iPhone, first *Share → Add to Home Screen*.
 
+### Account deletion
+
+1. **Edge Functions → Deploy a new function → Via editor**: name it `delete-account`, paste
+   [`supabase/functions/delete-account/index.ts`](supabase/functions/delete-account/index.ts), deploy, and turn
+   **Verify JWT** off in its settings (it checks the caller's token itself).
+
+### Storage clean-up (optional)
+
+1. Deploy [`supabase/functions/cleanup-storage/index.ts`](supabase/functions/cleanup-storage/index.ts) as `cleanup-storage` the same way, with **Verify JWT** off.
+2. **Edge Functions → Secrets**: add `CRON_SECRET` (any long random string).
+3. **Integrations → Cron** (enable `pg_cron` and `pg_net` if asked) → **Create job**: daily (`0 3 * * *`),
+   type *Supabase Edge Function*, function `cleanup-storage`, method POST, header `x-cron-secret` with the same secret.
+
 ### Google sign-in (optional)
 
 1. In Google Cloud Console → **Google Auth Platform**, create a **Web application** client.
@@ -262,7 +280,7 @@ src/
 └── types/                App types and generated database types
 supabase/
 ├── schema.sql            The complete database in one file
-├── functions/send-push/  Edge Function that sends push notifications
+├── functions/            Edge Functions: send-push, delete-account, cleanup-storage
 ├── email-templates/      Verification and reset emails with the 6-digit code
 ├── migrations/           The same schema, step by step
 └── tests/                SQL tests for the security rules

@@ -36,12 +36,14 @@ interface ChatPaneProps {
   /** A blocked one-to-one chat shows a notice instead of the message box. */
   blocked?: 'byMe' | 'byThem'
   onUnblock?: () => void
+  /** A message request from someone who isn't your friend: accept, block or delete. */
+  request?: { onAccept: () => void; onBlock: () => void; onDelete: () => void }
 }
 
 export function ChatPane({
   conversation, title, peer, messages, users, currentUserId, onBack, onSend, onRetry,
   hasOlder, loadingOlder, onLoadOlder, threadPlaceholder, onTyping, connection, onToggleDetails, detailsOpen,
-  blocked, onUnblock,
+  blocked, onUnblock, request,
 }: ChatPaneProps) {
   const { t, fmt, lang } = useLocale()
   const [viewing, setViewing] = useState<string | null>(null)
@@ -116,6 +118,22 @@ export function ChatPane({
       )}
 
       <div className="shrink-0 px-3 pt-1 pb-3 md:px-5 md:pb-5">
+        {request && (
+          <div
+            role="region"
+            aria-label={t.request.title}
+            className="mb-2 flex flex-col items-center gap-3 rounded-3xl bg-surface-raised px-4 py-3 text-center ring-1 ring-line"
+          >
+            <p dir="auto" className="text-body text-ink-muted">{t.request.notice(title)}</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button size="sm" onClick={request.onAccept}>{t.request.accept}</Button>
+              <Button size="sm" variant="secondary" onClick={request.onDelete}>{t.request.delete}</Button>
+              <Button size="sm" variant="ghost" className="text-danger hover:text-danger" onClick={request.onBlock}>
+                {t.request.block}
+              </Button>
+            </div>
+          </div>
+        )}
         {blocked ? (
           <div
             role="status"

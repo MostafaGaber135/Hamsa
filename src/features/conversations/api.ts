@@ -17,7 +17,8 @@ interface MemberJson {
   username: string;
   full_name: string;
   avatar_url: string | null;
-  last_seen_at: string;
+  // null when they hide it (or you no longer share a chat).
+  last_seen_at: string | null;
   last_read_at: string;
   role: "member" | "admin";
 }
@@ -127,7 +128,7 @@ export async function fetchConversations(): Promise<Conversation[]> {
       username: m.username,
       avatarUrl: m.avatar_url,
       online: false,
-      lastSeenAt: m.last_seen_at,
+      lastSeenAt: m.last_seen_at ?? undefined,
       lastReadAt: m.last_read_at,
       role: m.role,
     }));
@@ -149,6 +150,7 @@ export async function fetchConversations(): Promise<Conversation[]> {
       avatarUrl: row.avatar_url ?? undefined,
       wallpaper: row.wallpaper ?? undefined,
       myRole: row.my_role === "admin" ? "admin" : "member",
+      isRequest: row.is_request,
     };
   });
 }
@@ -156,7 +158,8 @@ export async function fetchConversations(): Promise<Conversation[]> {
 export async function fetchProfile(userId: string): Promise<User> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, username, full_name, avatar_url, last_seen_at")
+    // last_seen_at isn't readable directly: it's shared through get_my_conversations.
+    .select("id, username, full_name, avatar_url")
     .eq("id", userId)
     .single();
   if (error) throw error;
@@ -166,7 +169,6 @@ export async function fetchProfile(userId: string): Promise<User> {
     username: data.username,
     avatarUrl: data.avatar_url,
     online: true,
-    lastSeenAt: data.last_seen_at,
   };
 }
 
@@ -267,6 +269,8 @@ export async function runConversationAction(
         return supabase.rpc("clear_conversation", { conv_id });
       case "leave":
         return supabase.rpc("leave_conversation", { conv_id });
+      case "accept":
+        return supabase.rpc("accept_message_request", { conv_id });
     }
   })();
   if (error) throw error;

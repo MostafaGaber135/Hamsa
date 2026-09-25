@@ -83,9 +83,12 @@ export interface Conversation {
   wallpaper?: string
   /** Your role in this conversation. Admins can edit a group. */
   myRole: 'member' | 'admin'
+  /** A one-to-one chat a stranger started, waiting for you to accept or reply. */
+  isRequest: boolean
 }
 
-export type ConversationAction = 'pin' | 'unpin' | 'mute' | 'unmute' | 'markRead' | 'markUnread' | 'delete' | 'leave'
+export type ConversationAction =
+  | 'pin' | 'unpin' | 'mute' | 'unmute' | 'markRead' | 'markUnread' | 'delete' | 'leave' | 'accept'
 
 export type FriendStatus = 'friends' | 'incoming' | 'outgoing'
 

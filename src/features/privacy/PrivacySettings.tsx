@@ -2,48 +2,72 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { useLocale } from '@/lib/i18n'
-import type { GroupInvites } from './api'
-import { useBlockedUsers, useGroupInvites, useSetBlocked, useSetGroupInvites } from './queries'
+import type { PrivacySettings as Settings } from './api'
+import { useBlockedUsers, usePrivacySettings, useSetBlocked, useUpdatePrivacySettings } from './queries'
 
-/** The profile page's privacy section: who can add you to groups, and who you blocked. */
+/** The profile page's privacy section: online status, group invites, and who you blocked. */
 export function PrivacySettings({ userId }: { userId: string }) {
+  const { t } = useLocale()
+  const settings = usePrivacySettings(userId)
+  const update = useUpdatePrivacySettings(userId)
+
   return (
     <div className="flex flex-col gap-6">
-      <GroupInvitesSetting userId={userId} />
+      <Choice
+        name="presence"
+        legend={t.privacySettings.presence}
+        value={settings.data?.presence}
+        options={[
+          { value: 'contacts', label: t.privacySettings.presenceContacts },
+          { value: 'nobody', label: t.privacySettings.presenceNobody },
+        ]}
+        onChange={(presence) => update.mutate({ presence })}
+      />
+      <Choice
+        name="group-invites"
+        legend={t.privacySettings.groupInvites}
+        value={settings.data?.groupInvites}
+        options={[
+          { value: 'everyone', label: t.privacySettings.everyone },
+          { value: 'friends', label: t.privacySettings.friendsOnly },
+        ]}
+        onChange={(groupInvites) => update.mutate({ groupInvites })}
+      />
+      {settings.isError && <ErrorText>{t.loadError}</ErrorText>}
+      {update.error && <ErrorText>{update.error.message}</ErrorText>}
       <BlockedPeople />
     </div>
   )
 }
 
-function GroupInvitesSetting({ userId }: { userId: string }) {
-  const { t } = useLocale()
-  const invites = useGroupInvites(userId)
-  const set = useSetGroupInvites(userId)
-  const options: { value: GroupInvites; label: string }[] = [
-    { value: 'everyone', label: t.privacySettings.everyone },
-    { value: 'friends', label: t.privacySettings.friendsOnly },
-  ]
+interface ChoiceProps<T extends string> {
+  name: string
+  legend: string
+  /** Undefined while loading: the choice stays disabled. */
+  value: T | undefined
+  options: { value: T; label: string }[]
+  onChange: (value: T) => void
+}
 
+function Choice<T extends Settings[keyof Settings]>({ name, legend, value, options, onChange }: ChoiceProps<T>) {
   return (
-    <fieldset disabled={!invites.data}>
-      <legend className="text-body font-semibold text-ink">{t.privacySettings.groupInvites}</legend>
+    <fieldset disabled={value === undefined}>
+      <legend className="text-body font-semibold text-ink">{legend}</legend>
       <div className="mt-2 flex flex-col gap-1">
         {options.map((option) => (
           <label key={option.value} className="flex w-fit cursor-pointer items-center gap-2 py-1 text-body text-ink">
             <input
               type="radio"
-              name="group-invites"
+              name={name}
               value={option.value}
-              checked={invites.data === option.value}
-              onChange={() => set.mutate(option.value)}
+              checked={value === option.value}
+              onChange={() => onChange(option.value)}
               className="size-4 accent-accent"
             />
             {option.label}
           </label>
         ))}
       </div>
-      {invites.isError && <ErrorText>{t.loadError}</ErrorText>}
-      {set.error && <ErrorText>{set.error.message}</ErrorText>}
     </fieldset>
   )
 }
