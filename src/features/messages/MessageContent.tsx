@@ -61,12 +61,12 @@ export function VoicePlayer({ message, out }: { message: Message; out: boolean }
         {/* The bars are the picture; an invisible range input on top does the seeking,
             so it works with a mouse, touch and the keyboard. */}
         <div className="relative h-7">
-          <div aria-hidden className="flex h-full items-center gap-[2px]">
+          <div aria-hidden className="flex h-full items-center gap-0.5">
             {bars.map((height, i) => (
               <span
                 key={i}
                 className={cn(
-                  'w-[3px] flex-1 rounded-full transition-colors duration-100',
+                  'w-0.75 flex-1 rounded-full transition-colors duration-100',
                   (i + 0.5) / bars.length <= progress
                     ? 'bg-accent'
                     : out ? 'bg-bubble-out-meta/45' : 'bg-ink-subtle/40',
@@ -160,8 +160,16 @@ const BOX = { w: 256, h: 150 }
 /** A small OpenStreetMap preview (4 tiles around the point) with a pin, linking to Maps. */
 export function LocationCard({ message }: { message: Message }) {
   const { t } = useLocale()
-  const lat = message.attachment?.lat ?? 0
-  const lng = message.attachment?.lng ?? 0
+  const lat = message.attachment?.lat
+  const lng = message.attachment?.lng
+  if (lat === undefined || lng === undefined) {
+    return (
+      <span className="flex items-center gap-1.5 px-2 py-1 text-body text-ink-muted">
+        <MapPin size={14} strokeWidth={2} aria-hidden />
+        {t.rich.locationPreview}
+      </span>
+    )
+  }
 
   const n = 2 ** ZOOM
   const x = ((lng + 180) / 360) * n
@@ -203,7 +211,7 @@ export function LocationCard({ message }: { message: Message }) {
           style={{ left: BOX.w / 2, top: BOX.h / 2 + 4 }}
           aria-hidden
         />
-        <span className="absolute end-1 bottom-0.5 rounded bg-white/80 px-1 text-[9px] text-black">© OpenStreetMap</span>
+        <span className="absolute inset-e-1 bottom-0.5 rounded bg-white/80 px-1 text-[9px] text-black">© OpenStreetMap</span>
       </span>
       <span className="flex items-center gap-1.5 px-2 pt-2 pb-1 text-body font-semibold">
         <MapPin size={14} strokeWidth={2} aria-hidden />

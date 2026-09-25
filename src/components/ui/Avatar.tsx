@@ -64,7 +64,7 @@ export function Avatar({ id, name, src, size = 'md', group, online, className }:
         <span
           aria-hidden
           className={cn(
-            'absolute -end-0.5 -bottom-0.5 rounded-full bg-presence ring-2 ring-[var(--ring,var(--surface))]',
+            'absolute -inset-e-0.5 -bottom-0.5 rounded-full bg-presence ring-2 ring-(--ring,var(--surface))',
             s.dot,
           )}
         />

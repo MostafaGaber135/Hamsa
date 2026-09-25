@@ -46,20 +46,35 @@ export interface MessageRowLike {
   attachment?: unknown;
 }
 
+const MAX_WAVEFORM_BARS = 64;
+
+// Attachments come from other people's clients, so every field is checked:
+// a wrong type is dropped instead of crashing the message that shows it.
+const asString = (v: unknown) => (typeof v === "string" ? v : undefined);
+const asNumber = (v: unknown) =>
+  typeof v === "number" && Number.isFinite(v) ? v : undefined;
+const inRange = (v: unknown, limit: number) => {
+  const n = asNumber(v);
+  return n !== undefined && Math.abs(n) <= limit ? n : undefined;
+};
+
 export function toAttachment(json: unknown): Attachment | undefined {
-  if (!json || typeof json !== "object") return undefined;
-  const a = json as AttachmentJson;
+  if (!json || typeof json !== "object" || Array.isArray(json)) return undefined;
+  const a = json as Record<keyof AttachmentJson, unknown>;
+  const waveform = Array.isArray(a.waveform)
+    ? a.waveform
+        .slice(0, MAX_WAVEFORM_BARS)
+        .map((bar) => Math.min(100, Math.max(0, asNumber(bar) ?? 0)))
+    : undefined;
   return {
-    path: a.path,
-    name: a.name,
-    size: a.size,
-    mime: a.mime,
-    durationMs: a.duration_ms,
-    waveform: Array.isArray(a.waveform)
-      ? a.waveform.slice(0, 64).map(Number)
-      : undefined,
-    lat: a.lat,
-    lng: a.lng,
+    path: asString(a.path),
+    name: asString(a.name),
+    size: asNumber(a.size),
+    mime: asString(a.mime),
+    durationMs: asNumber(a.duration_ms),
+    waveform,
+    lat: inRange(a.lat, 90),
+    lng: inRange(a.lng, 180),
   };
 }
 

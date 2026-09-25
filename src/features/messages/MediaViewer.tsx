@@ -101,7 +101,7 @@ export function MediaViewer({ items, startId, users, onClose }: MediaViewerProps
                 onClick={() => go(-1)}
                 disabled={index === 0}
                 aria-label={t.rich.previous}
-                className={cn(nav, 'absolute start-2 top-1/2 -translate-y-1/2 md:start-5')}
+                className={cn(nav, 'absolute inset-s-2 top-1/2 -translate-y-1/2 md:inset-s-5')}
               >
                 <ChevronLeft size={24} strokeWidth={1.75} className="rtl:-scale-x-100" aria-hidden />
               </button>
@@ -110,7 +110,7 @@ export function MediaViewer({ items, startId, users, onClose }: MediaViewerProps
                 onClick={() => go(1)}
                 disabled={index === items.length - 1}
                 aria-label={t.rich.next}
-                className={cn(nav, 'absolute end-2 top-1/2 -translate-y-1/2 md:end-5')}
+                className={cn(nav, 'absolute inset-e-2 top-1/2 -translate-y-1/2 md:inset-e-5')}
               >
                 <ChevronRight size={24} strokeWidth={1.75} className="rtl:-scale-x-100" aria-hidden />
               </button>

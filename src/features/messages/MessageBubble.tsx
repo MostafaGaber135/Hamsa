@@ -86,7 +86,7 @@ export function MessageBubble({ message, direction, position, onRetry, onOpen }:
                   <img
                     src={media}
                     alt=""
-                    className="h-[165px] w-[236px] bg-surface-sunken object-cover md:h-[196px] md:w-[280px]"
+                    className="h-41.25 w-59 bg-surface-sunken object-cover md:h-49 md:w-70"
                   />
                 ) : (
                   <>
@@ -95,7 +95,7 @@ export function MessageBubble({ message, direction, position, onRetry, onOpen }:
                       muted
                       playsInline
                       preload="metadata"
-                      className="h-[165px] w-[236px] bg-black object-cover md:h-[196px] md:w-[280px]"
+                      className="h-41.25 w-59 bg-black object-cover md:h-49 md:w-70"
                     />
                     <span className="absolute inset-0 flex items-center justify-center">
                       <span className="inline-flex size-12 items-center justify-center rounded-full bg-black/55 text-white">
@@ -115,9 +115,9 @@ export function MessageBubble({ message, direction, position, onRetry, onOpen }:
             {caption && (
               <p
                 className={cn(
-                  'break-words whitespace-pre-wrap',
+                  'wrap-break-word whitespace-pre-wrap',
                   lang === 'ar' ? 'text-message-ar' : 'text-message',
-                  kind !== 'text' && 'max-w-[272px] px-2 pt-1.5 pb-1',
+                  kind !== 'text' && 'max-w-68 px-2 pt-1.5 pb-1',
                 )}
               >
                 {caption}
@@ -129,7 +129,7 @@ export function MessageBubble({ message, direction, position, onRetry, onOpen }:
             <span
               className={cn(
                 caption || floatingMeta ? 'absolute' : 'mt-0.5 flex justify-end',
-                floatingMeta ? 'end-3 bottom-3' : caption ? 'end-3 bottom-1.5' : '',
+                floatingMeta ? 'inset-e-3 bottom-3' : caption ? 'inset-e-3 bottom-1.5' : '',
               )}
             >
               {meta}

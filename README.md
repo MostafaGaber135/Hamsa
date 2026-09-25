@@ -128,11 +128,12 @@ All access rules live in the database, not in the frontend, so they hold even if
 - **Multi-table writes go through functions.** Creating a conversation and adding its members happens in one transaction.
 - **Column-level privileges.** On your own profile you can edit only your name, username and photo — never your id or timestamps.
 - **The server owns time.** A trigger sets `created_at`, so messages can't be back-dated.
+- **Attachments are validated twice.** The database rejects attachments with the wrong types, a location without valid coordinates, or more than 4 KB of JSON. The app also checks every field it reads, and each message renders inside its own error boundary, so one bad message can never blank out a chat.
 - **Private Realtime channels.** Typing channels (`typing:<conversation-id>`) are restricted to that conversation's members by policies on `realtime.messages`.
 - **Private file storage.** Chat images, voice notes and documents are only reachable through short-lived signed URLs, and only members can upload to a conversation's folder.
 - **Admin-only group changes.** Renaming, the group photo and membership changes are checked in the database, not just hidden in the UI.
 
-The security rules are covered by SQL tests in [`supabase/tests`](supabase/tests): outsiders can't read or write a conversation, nobody can impersonate another user, and uploads are limited to members.
+The security rules are covered by SQL tests in [`supabase/tests`](supabase/tests): outsiders can't read or write a conversation, nobody can impersonate another user, uploads are limited to members, and malformed attachments are refused.
 
 ---
 
