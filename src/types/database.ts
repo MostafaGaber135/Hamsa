@@ -60,6 +60,7 @@ export type Database = {
           avatar_url: string | null
           last_seen_at: string
           created_at: string
+          group_invites: string
         }
         Insert: {
           id: string
@@ -68,6 +69,7 @@ export type Database = {
           avatar_url?: string | null
           last_seen_at?: string
           created_at?: string
+          group_invites?: string
         }
         Update: {
           id?: string
@@ -76,6 +78,7 @@ export type Database = {
           avatar_url?: string | null
           last_seen_at?: string
           created_at?: string
+          group_invites?: string
         }
         Relationships: []
       }
@@ -294,6 +297,28 @@ export type Database = {
       save_push_subscription: {
         Args: { sub_endpoint: string; sub_p256dh: string; sub_auth: string; sub_user_agent: string }
         Returns: undefined
+      }
+      block_user: {
+        Args: { target_id: string }
+        Returns: undefined
+      }
+      unblock_user: {
+        Args: { target_id: string }
+        Returns: undefined
+      }
+      get_my_blocks: {
+        Args: never
+        Returns: {
+          user_id: string
+          username: string
+          full_name: string
+          avatar_url: string | null
+          created_at: string
+        }[]
+      }
+      get_blocked_conversations: {
+        Args: never
+        Returns: string[]
       }
       delete_push_subscription: {
         Args: { sub_endpoint: string }

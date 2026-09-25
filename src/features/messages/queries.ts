@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData, type QueryClient } from '@tanstack/react-query'
 import type { CachedMessage, Conversation } from '@/types/chat'
+import { privacyKeys } from '@/features/privacy/queries'
 import { conversationKeys } from '../conversations/queries'
 import { PAGE_SIZE, fetchMessagePage, insertMessage } from './api'
 
@@ -88,7 +89,11 @@ export function useSendMessage(conversationId: string) {
       patchMessage(qc, conversationId, message.id, { pending: undefined, file: undefined }),
 
     // Failed messages stay where they are, marked failed, with a retry button.
-    onError: (_error, message) => patchMessage(qc, conversationId, message.id, { pending: 'failed' }),
+    // The other person may have just blocked you: check, so the chat can say so.
+    onError: (_error, message) => {
+      patchMessage(qc, conversationId, message.id, { pending: 'failed' })
+      qc.invalidateQueries({ queryKey: privacyKeys.blockedConversations })
+    },
 
     onSettled: () => qc.invalidateQueries({ queryKey: conversationKeys.all }),
   })

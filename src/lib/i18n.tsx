@@ -265,6 +265,24 @@ const strings = {
     messageUnavailable: 'This message can’t be shown.',
     appCrashed: 'Something went wrong.',
     reload: 'Reload Hamsa',
+    privacySettings: {
+      title: 'Privacy',
+      description: 'Who can reach you on Hamsa.',
+      groupInvites: 'Who can add me to groups',
+      everyone: 'Everyone',
+      friendsOnly: 'Only my friends',
+      blocked: 'Blocked people',
+      noBlocked: 'You haven’t blocked anyone.',
+      unblock: 'Unblock',
+    },
+    block: {
+      block: (name: string) => `Block ${name}`,
+      unblock: (name: string) => `Unblock ${name}`,
+      confirm: (name: string) =>
+        `Block ${name}? They won’t be able to message you or send you a friend request, and you’ll no longer be friends.`,
+      youBlocked: (name: string) => `You blocked ${name}.`,
+      cantReply: 'You can’t reply to this conversation.',
+    },
   },
   ar: {
     search: 'ابحث في المحادثات أو الأشخاص',
@@ -528,6 +546,24 @@ const strings = {
     messageUnavailable: 'تعذّر عرض هذه الرسالة.',
     appCrashed: 'حدث خطأ ما.',
     reload: 'إعادة تحميل همسة',
+    privacySettings: {
+      title: 'الخصوصية',
+      description: 'من يمكنه الوصول إليك على همسة.',
+      groupInvites: 'من يمكنه إضافتي إلى المجموعات',
+      everyone: 'الجميع',
+      friendsOnly: 'أصدقائي فقط',
+      blocked: 'الأشخاص المحظورون',
+      noBlocked: 'لم تحظر أحدًا.',
+      unblock: 'إلغاء الحظر',
+    },
+    block: {
+      block: (name: string) => `حظر ${name}`,
+      unblock: (name: string) => `إلغاء حظر ${name}`,
+      confirm: (name: string) =>
+        `حظر ${name}؟ لن يتمكن من مراسلتك أو إرسال طلب صداقة إليك، وستنتهي صداقتكما.`,
+      youBlocked: (name: string) => `لقد حظرت ${name}.`,
+      cantReply: 'لا يمكنك الرد على هذه المحادثة.',
+    },
   },
 } satisfies Record<Lang, unknown>
 

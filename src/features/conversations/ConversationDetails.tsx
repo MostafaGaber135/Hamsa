@@ -8,6 +8,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { TextField } from '@/components/ui/TextField'
 import { fetchSharedItems } from '@/features/messages/api'
 import { FileCard, VoicePlayer } from '@/features/messages/MessageContent'
+import { BlockButton } from '@/features/privacy/BlockButton'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
 import { useDebounced } from '@/lib/useDebounced'
@@ -74,6 +75,12 @@ export function ConversationDetails({ conversation, title, me, onClose, onOpenMe
         <SharedItems conversation={conversation} onOpenMedia={onOpenMedia} />
         <WallpaperPicker conversation={conversation} />
         {conversation.isGroup && <Members conversation={conversation} me={me} isAdmin={isAdmin} />}
+
+        {peer && (
+          <div className="border-t border-line p-4">
+            <BlockButton user={peer} />
+          </div>
+        )}
 
         {conversation.isGroup && (
           <div className="border-t border-line p-4">
@@ -226,7 +233,7 @@ function WallpaperPicker({ conversation }: { conversation: Conversation }) {
           >
             <span className="rounded-md bg-surface-raised/85 px-1.5 text-meta font-semibold text-ink">{t.wallpapers[id]}</span>
             {current === id && (
-              <span className="absolute end-1.5 top-1.5 inline-flex size-5 items-center justify-center rounded-full bg-accent text-on-accent">
+              <span className="absolute inset-e-1.5 top-1.5 inline-flex size-5 items-center justify-center rounded-full bg-accent text-on-accent">
                 <Check size={12} strokeWidth={3} aria-hidden />
               </span>
             )}
