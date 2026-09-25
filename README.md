@@ -131,7 +131,9 @@ All access rules live in the database, not in the frontend, so they hold even if
 - **Attachments are validated twice.** The database rejects attachments with the wrong types, a location without valid coordinates, or more than 4 KB of JSON. The app also checks every field it reads, and each message renders inside its own error boundary, so one bad message can never blank out a chat.
 - **Private Realtime channels.** Typing channels (`typing:<conversation-id>`) are restricted to that conversation's members by policies on `realtime.messages`.
 - **Private file storage.** Chat images, voice notes and documents are only reachable through short-lived signed URLs, and only members can upload to a conversation's folder.
-- **Admin-only group changes.** Renaming, the group photo and membership changes are checked in the database, not just hidden in the UI.
+- **Admin-only group changes.** Renaming, the group photo and membership changes are checked in the database, not just hidden in the UI. A group can never lose its last admin.
+- **Photos only from Hamsa's storage.** A profile or group photo must be a file in your own folder of this project's avatars bucket (or your Google photo), so nobody can plant a tracking image that logs who looked at it.
+- **Security headers.** `vercel.json` sets `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` and HSTS, plus a Content Security Policy (currently in report-only mode).
 
 The security rules are covered by SQL tests in [`supabase/tests`](supabase/tests): outsiders can't read or write a conversation, nobody can impersonate another user, uploads are limited to members, and malformed attachments are refused.
 
