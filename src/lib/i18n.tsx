@@ -262,6 +262,9 @@ const strings = {
     loadError: "Couldn't load this. Check your connection and try again.",
     tryAgain: 'Try again',
     noConversations: 'No conversations yet. Start one with New chat.',
+    messageUnavailable: 'This message can’t be shown.',
+    appCrashed: 'Something went wrong.',
+    reload: 'Reload Hamsa',
   },
   ar: {
     search: 'ابحث في المحادثات أو الأشخاص',
@@ -522,6 +525,9 @@ const strings = {
     loadError: 'تعذّر التحميل. تحقق من اتصالك وحاول مرة أخرى.',
     tryAgain: 'حاول مرة أخرى',
     noConversations: 'لا توجد محادثات بعد. ابدأ واحدة من «محادثة جديدة».',
+    messageUnavailable: 'تعذّر عرض هذه الرسالة.',
+    appCrashed: 'حدث خطأ ما.',
+    reload: 'إعادة تحميل همسة',
   },
 } satisfies Record<Lang, unknown>
 

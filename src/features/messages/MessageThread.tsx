@@ -1,6 +1,7 @@
 import { ArrowDown } from 'lucide-react'
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { Spinner } from '@/components/ui/Spinner'
 import { senderText, tintFor } from '@/lib/avatar'
 import { cn } from '@/lib/cn'
@@ -161,7 +162,15 @@ export function MessageThread({
                         {sender.name}
                       </span>
                     )}
-                    <MessageBubble message={m} direction={out ? 'out' : 'in'} position={position} onRetry={onRetry} onOpen={onOpen} />
+                    <ErrorBoundary
+                      fallback={
+                        <p className="rounded-2xl bg-surface-sunken px-3 py-2 text-caption text-ink-muted italic">
+                          {t.messageUnavailable}
+                        </p>
+                      }
+                    >
+                      <MessageBubble message={m} direction={out ? 'out' : 'in'} position={position} onRetry={onRetry} onOpen={onOpen} />
+                    </ErrorBoundary>
                   </div>
                 </div>
               </Fragment>
