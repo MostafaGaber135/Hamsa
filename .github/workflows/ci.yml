@@ -1,0 +1,81 @@
+# Every push to main and every pull request: the app, the database rules, and the whole
+# thing end to end (two browsers against a local Supabase).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: Lint, types, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  database:
+    name: Database rules (SQL tests)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: sudo apt-get install -y postgresql-client
+      - name: schema.sql matches the migrations
+        run: |
+          node scripts/build-schema.mjs
+          git diff --exit-code supabase/schema.sql || (echo "::error::supabase/schema.sql is out of date: run npm run db:schema" && exit 1)
+      - run: node scripts/test-db.mjs
+
+  e2e:
+    name: End to end (Playwright + local Supabase)
+    runs-on: ubuntu-latest
+    needs: [app, database]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Start Supabase (migrations applied)
+        run: npx supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,supavisor
+      - name: Database types match the migrations
+        run: |
+          npm run db:types
+          git diff --exit-code src/types/database.generated.ts || (echo "::error::src/types/database.generated.ts is out of date: run npm run db:types" && exit 1)
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7

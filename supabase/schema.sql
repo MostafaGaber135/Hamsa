@@ -1,33 +1,35 @@
 -- =====================================================================
 -- Hamsa: complete database schema (all migrations in one file)
 --
--- FOR A NEW, EMPTY SUPABASE PROJECT ONLY.
--- If you already ran the separate migration files, don't run this: it would
--- fail with "already exists". It creates exactly the same result.
+-- GENERATED from supabase/migrations by scripts/build-schema.mjs: don't edit it by hand.
+-- Change a migration (or add one), then run: npm run db:schema
+--
+-- FOR A NEW, EMPTY SUPABASE PROJECT ONLY. If you already ran the migrations (by hand
+-- or with supabase db push), don't run this: it would fail with "already exists".
 --
 -- Contents
---   1–11  Profiles, conversations, messages, RLS, chat functions,
---         Realtime and chat image storage
---   12    Profile photos from Google
---   13–14 Friendships and friend functions
---   15–16 Profile editing: editable columns and the avatars bucket
---   17–20 Conversation actions: pin, mute, mark unread, delete chat, leave group
---   21–22 Realtime: "last seen", and who may join the online / typing channels
---   23–28 Voice notes, files, video, location and stickers; group photo, admins
---         and members; per-person chat wallpaper
---   29    Push notification subscriptions
---   30    Attachment validation
---   31    Hardening: photo URLs, chat image limits, last group admin
---   32    Blocking people, and who can add you to groups
---   33    Online status privacy, message requests, rate limit, storage clean-up,
---         account deletion
---   34    Live updates through one private channel per person
---   35    Replies, reactions, edit/delete for everyone, mentions, search, pins,
---         saved messages, reports, link previews, group description and invites
+--    1. Initial schema
+--    2. Friends + profile pictures from Google
+--    3. Editing your own profile (name, username, photo)
+--    4. Conversation actions (pin, mute, mark unread, delete chat, leave group)
+--    5. Realtime extras ("last seen", who's online, who's typing)
+--    6. Voice notes, files, video, location, stickers, group settings, and chat wallpapers
+--    7. Push notifications (Web Push)
+--    8. Validate message attachments
+--    9. Hardening (photo URLs, chat image limits, last group admin)
+--   10. Blocking people, and who can add you to groups
+--   11. Online status privacy, message requests, rate limit, storage clean-up and account deletion
+--   12. Live updates through one private channel per person
+--   13. Replies, reactions, edit and delete for everyone, mentions, search, pinned and saved messages, reports, link previews, group descriptions and invite links
 --
 -- Run once: SQL Editor → New query → paste → Run.
 -- =====================================================================
 
+
+-- =====================================================================
+-- 1. Initial schema
+--    (20260924000000_init.sql)
+-- =====================================================================
 
 -- ---------------------------------------------------------------------
 -- 1. Profiles: one row per user, created automatically on sign-up
@@ -42,7 +44,7 @@ create table public.profiles (
 );
 
 -- Works for email sign-up (full_name comes from signUp options.data)
--- and Google (which sends full_name / name and a photo in avatar_url or picture).
+-- and Google (which sends full_name / name and avatar_url).
 create function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -66,9 +68,10 @@ begin
   insert into public.profiles (id, username, full_name, avatar_url)
   values (
     new.id,
+    -- A short slice of the id keeps usernames unique without a retry loop.
     base || '_' || substr(replace(new.id::text, '-', ''), 1, 6),
     left(display_name, 60),
-    coalesce(new.raw_user_meta_data ->> 'avatar_url', new.raw_user_meta_data ->> 'picture')
+    new.raw_user_meta_data ->> 'avatar_url'
   );
   return new;
 end;
@@ -478,9 +481,46 @@ create policy "Members can view chat images"
   using (bucket_id = 'chat-images' and public.is_member_of_path(name));
 
 
+-- =====================================================================
+-- 2. Friends + profile pictures from Google
+--    (20260925000000_friends_and_avatars.sql)
+-- =====================================================================
+
 -- ---------------------------------------------------------------------
--- 12. Profile photos from Google (email accounts that later sign in with Google)
+-- 1. Profile pictures from Google
 -- ---------------------------------------------------------------------
+-- Google puts the photo in "avatar_url" (and "picture"). Take whichever exists.
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  base text;
+  display_name text;
+begin
+  base := left(regexp_replace(lower(split_part(coalesce(new.email, ''), '@', 1)), '[^a-z0-9_]', '', 'g'), 16);
+  if char_length(base) < 3 then
+    base := 'user';
+  end if;
+
+  display_name := coalesce(
+    nullif(trim(new.raw_user_meta_data ->> 'full_name'), ''),
+    nullif(trim(new.raw_user_meta_data ->> 'name'), ''),
+    base
+  );
+
+  insert into public.profiles (id, username, full_name, avatar_url)
+  values (
+    new.id,
+    base || '_' || substr(replace(new.id::text, '-', ''), 1, 6),
+    left(display_name, 60),
+    coalesce(new.raw_user_meta_data ->> 'avatar_url', new.raw_user_meta_data ->> 'picture')
+  );
+  return new;
+end;
+$$;
+
 -- Someone who signed up with email and later signs in with Google gets the
 -- Google photo too, as long as they don't already have one.
 create function public.sync_avatar_from_auth()
@@ -498,23 +538,23 @@ begin
 end;
 $$;
 
--- Google resends the same photo URL on every sign-in, so only react when the
--- Google photo actually changed. That way "Remove photo" stays removed.
 create trigger on_auth_user_updated
   after update of raw_user_meta_data on auth.users
-  for each row
-  when (
-    coalesce(old.raw_user_meta_data ->> 'avatar_url', old.raw_user_meta_data ->> 'picture')
-      is distinct from
-    coalesce(new.raw_user_meta_data ->> 'avatar_url', new.raw_user_meta_data ->> 'picture')
-  )
-  execute function public.sync_avatar_from_auth();
+  for each row execute function public.sync_avatar_from_auth();
 
 revoke execute on function public.sync_avatar_from_auth() from public, anon, authenticated;
 
+-- Fill in photos for accounts that already exist.
+update public.profiles p
+   set avatar_url = coalesce(u.raw_user_meta_data ->> 'avatar_url', u.raw_user_meta_data ->> 'picture')
+  from auth.users u
+ where u.id = p.id
+   and p.avatar_url is null
+   and coalesce(u.raw_user_meta_data ->> 'avatar_url', u.raw_user_meta_data ->> 'picture') is not null;
+
 
 -- ---------------------------------------------------------------------
--- 13. Friendships
+-- 2. Friendships
 -- ---------------------------------------------------------------------
 -- One row per pair of people. "pending" = a request waiting for an answer;
 -- "accepted" = friends. Declining or removing deletes the row, so either
@@ -544,7 +584,7 @@ create policy "People can see their own friendships"
 
 
 -- ---------------------------------------------------------------------
--- 14. Friend functions (supabase.rpc)
+-- 3. Friend functions (supabase.rpc)
 -- ---------------------------------------------------------------------
 
 -- Sends a request. If they already sent you one, this accepts it instead.
@@ -675,8 +715,13 @@ grant  execute on function public.get_my_friendships()                  to authe
 alter publication supabase_realtime add table public.friendships;
 
 
+-- =====================================================================
+-- 3. Editing your own profile (name, username, photo)
+--    (20260926000000_profile_editing.sql)
+-- =====================================================================
+
 -- ---------------------------------------------------------------------
--- 15. Only these columns can be edited from the app
+-- 1. Only these columns can be edited from the app
 -- ---------------------------------------------------------------------
 -- The update policy already limits you to your own row. Column privileges
 -- also stop anyone from changing their id, created_at or last_seen_at.
@@ -685,7 +730,7 @@ grant  update (full_name, username, avatar_url) on public.profiles to authentica
 
 
 -- ---------------------------------------------------------------------
--- 16. Profile photos bucket
+-- 2. Profile photos bucket
 -- ---------------------------------------------------------------------
 -- Public, so a photo URL works in an <img> tag for everyone. Files live at
 -- "<user_id>/<file>", and only you can add or delete files in your folder.
@@ -710,7 +755,30 @@ create policy "Users can delete their own avatar"
 
 
 -- ---------------------------------------------------------------------
--- 17. Per-person settings for each conversation
+-- 3. Don't bring back a removed photo on every Google sign-in
+-- ---------------------------------------------------------------------
+-- Google resends the same photo URL each time you sign in. Only copy it when
+-- the Google photo actually changed, so "Remove photo" stays removed.
+drop trigger if exists on_auth_user_updated on auth.users;
+
+create trigger on_auth_user_updated
+  after update of raw_user_meta_data on auth.users
+  for each row
+  when (
+    coalesce(old.raw_user_meta_data ->> 'avatar_url', old.raw_user_meta_data ->> 'picture')
+      is distinct from
+    coalesce(new.raw_user_meta_data ->> 'avatar_url', new.raw_user_meta_data ->> 'picture')
+  )
+  execute function public.sync_avatar_from_auth();
+
+
+-- =====================================================================
+-- 4. Conversation actions (pin, mute, mark unread, delete chat, leave group)
+--    (20260927000000_conversation_actions.sql)
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- 1. Per-person settings for each conversation
 -- ---------------------------------------------------------------------
 -- These belong to one person: pinning or deleting a chat never affects the others in it.
 alter table public.conversation_participants
@@ -721,7 +789,7 @@ alter table public.conversation_participants
 
 
 -- ---------------------------------------------------------------------
--- 18. Actions (supabase.rpc). Each one only ever touches your own row.
+-- 2. Actions (supabase.rpc). Each one only ever touches your own row.
 -- ---------------------------------------------------------------------
 create function public.set_conversation_pinned(conv_id uuid, pinned boolean)
 returns void
@@ -818,9 +886,9 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 19. The sidebar list, now aware of pins, "marked unread" and deleted chats
+-- 3. The sidebar list, now aware of pins, "marked unread" and deleted chats
 -- ---------------------------------------------------------------------
--- Replaces the version from section 8: the return columns change, so drop it first.
+-- The return columns change, so the old version is dropped first.
 drop function public.get_my_conversations();
 
 create function public.get_my_conversations()
@@ -899,7 +967,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 20. Permissions for the conversation actions
+-- 4. Permissions
 -- ---------------------------------------------------------------------
 revoke execute on function public.set_conversation_pinned(uuid, boolean) from public, anon;
 revoke execute on function public.set_conversation_muted(uuid, boolean)  from public, anon;
@@ -915,8 +983,13 @@ grant  execute on function public.leave_conversation(uuid)               to auth
 grant  execute on function public.get_my_conversations()                 to authenticated;
 
 
+-- =====================================================================
+-- 5. Realtime extras ("last seen", who's online, who's typing)
+--    (20260928000000_realtime.sql)
+-- =====================================================================
+
 -- ---------------------------------------------------------------------
--- 21. "Last seen"
+-- 1. "Last seen"
 -- ---------------------------------------------------------------------
 -- The app calls this every minute while you're using it, and when you leave.
 -- "Online" itself comes from Realtime Presence; this is what others see once you go.
@@ -936,7 +1009,7 @@ grant  execute on function public.touch_last_seen() to authenticated;
 
 
 -- ---------------------------------------------------------------------
--- 22. Who can join which Realtime channel
+-- 2. Who can join which Realtime channel
 -- ---------------------------------------------------------------------
 -- The app uses private channels, so Realtime checks these policies before letting
 -- anyone in. (Database changes are protected separately, by the tables' own RLS.)
@@ -977,8 +1050,13 @@ create policy "Members can say they are typing"
   with check (extension = 'broadcast' and public.is_member_of_topic(realtime.topic()));
 
 
+-- =====================================================================
+-- 6. Voice notes, files, video, location, stickers, group settings, and chat wallpapers
+--    (20260929000000_rich_messages_and_groups.sql)
+-- =====================================================================
+
 -- ---------------------------------------------------------------------
--- 23. Message types
+-- 1. Message types
 -- ---------------------------------------------------------------------
 -- kind:        what the message is. Plain text and images keep working as before.
 -- attachment:  details for voice notes, files, videos and locations, e.g.
@@ -1005,7 +1083,7 @@ create index messages_conversation_kind_idx on public.messages (conversation_id,
 
 
 -- ---------------------------------------------------------------------
--- 24. Private bucket for voice notes, files and videos
+-- 2. Private bucket for voice notes, files and videos
 -- ---------------------------------------------------------------------
 -- Same rule as chat images: files live at "<conversation_id>/<file>", and only
 -- members of that conversation can upload or open them. 50 MB per file.
@@ -1023,7 +1101,7 @@ create policy "Members can open chat files"
 
 
 -- ---------------------------------------------------------------------
--- 25. Group photo and per-person chat wallpaper
+-- 3. Group photo and per-person chat wallpaper
 -- ---------------------------------------------------------------------
 alter table public.conversations
   add column avatar_url text;
@@ -1077,7 +1155,7 @@ create policy "Group admins can delete the group photo"
 
 
 -- ---------------------------------------------------------------------
--- 26. Group management (admins only)
+-- 4. Group management (admins only)
 -- ---------------------------------------------------------------------
 create function public.update_group(conv_id uuid, new_name text, new_avatar_url text)
 returns void
@@ -1170,7 +1248,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 27. The sidebar list, now with group photos, wallpapers and message kinds
+-- 5. The sidebar list, now with group photos, wallpapers and message kinds
 -- ---------------------------------------------------------------------
 drop function public.get_my_conversations();
 
@@ -1255,7 +1333,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 28. Permissions and Realtime
+-- 6. Permissions and Realtime
 -- ---------------------------------------------------------------------
 revoke execute on function public.is_group_admin(uuid)                      from public, anon;
 revoke execute on function public.is_group_admin_of_path(text)              from public, anon;
@@ -1278,9 +1356,11 @@ grant  execute on function public.get_my_conversations()                    to a
 alter publication supabase_realtime add table public.conversations;
 
 
--- ---------------------------------------------------------------------
--- 29. Push notification subscriptions
--- ---------------------------------------------------------------------
+-- =====================================================================
+-- 7. Push notifications (Web Push)
+--    (20260930000000_push_notifications.sql)
+-- =====================================================================
+
 -- One row per browser/device that turned notifications on. The endpoint and keys
 -- come from the browser's PushManager; the send-push Edge Function uses them.
 create table public.push_subscriptions (
@@ -1340,9 +1420,11 @@ grant  execute on function public.save_push_subscription(text, text, text, text)
 grant  execute on function public.delete_push_subscription(text)                 to authenticated;
 
 
--- ---------------------------------------------------------------------
--- 30. Attachment validation
--- ---------------------------------------------------------------------
+-- =====================================================================
+-- 8. Validate message attachments
+--    (20261001000000_validate_attachments.sql)
+-- =====================================================================
+
 -- The app writes attachments in a known shape, but the API accepts any JSON.
 -- A message with the wrong types (e.g. {"lat": "x"}) or a huge blob would
 -- reach every member of the conversation, so the database refuses it.
@@ -1382,8 +1464,13 @@ alter table public.messages
     check (public.is_valid_attachment(kind, attachment)) not valid;
 
 
+-- =====================================================================
+-- 9. Hardening (photo URLs, chat image limits, last group admin)
+--    (20261002000000_hardening.sql)
+-- =====================================================================
+
 -- ---------------------------------------------------------------------
--- 31a. Photos can only come from Hamsa's own storage (or Google)
+-- 1. Photos can only come from Hamsa's own storage (or Google)
 -- ---------------------------------------------------------------------
 -- avatar_url is shown to everyone who sees you. If it could be any URL, a
 -- tracking image on someone else's server would learn every viewer's IP.
@@ -1464,7 +1551,7 @@ revoke execute on function public.check_group_avatar()   from public, anon, auth
 
 
 -- ---------------------------------------------------------------------
--- 31b. Chat images: the same limits on the server as in the app
+-- 2. Chat images: the same limits on the server as in the app
 -- ---------------------------------------------------------------------
 -- The app resizes photos to WebP (PNG on older browsers) and keeps GIFs as they are.
 update storage.buckets
@@ -1474,7 +1561,7 @@ update storage.buckets
 
 
 -- ---------------------------------------------------------------------
--- 31c. A group always keeps at least one admin
+-- 3. A group always keeps at least one admin
 -- ---------------------------------------------------------------------
 create or replace function public.set_member_role(conv_id uuid, member_id uuid, new_role text)
 returns void
@@ -1502,8 +1589,13 @@ end;
 $$;
 
 
+-- =====================================================================
+-- 10. Blocking people, and who can add you to groups
+--    (20261003000000_blocks.sql)
+-- =====================================================================
+
 -- ---------------------------------------------------------------------
--- 32a. Blocks
+-- 1. Blocks
 -- ---------------------------------------------------------------------
 -- One row per person you blocked. Only you can see your own list: the other
 -- person is never told, they just can't reach you any more.
@@ -1540,7 +1632,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 32b. Who can add you to groups
+-- 2. Who can add you to groups
 -- ---------------------------------------------------------------------
 alter table public.profiles
   add column group_invites text not null default 'everyone'
@@ -1569,7 +1661,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 32c. Messages: nobody can write into a blocked one-to-one chat
+-- 3. Messages: nobody can write into a blocked one-to-one chat
 -- ---------------------------------------------------------------------
 -- Groups are unaffected: blocking someone doesn't stop a group you share.
 create function public.can_send_to(conv_id uuid)
@@ -1601,7 +1693,7 @@ create policy "Members can send messages as themselves"
 
 
 -- ---------------------------------------------------------------------
--- 32d. Existing functions, now aware of blocks
+-- 4. Existing functions, now aware of blocks
 -- ---------------------------------------------------------------------
 
 -- A blocked pair can still open the chat they already had (to read it),
@@ -1790,7 +1882,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 32e. Block functions (supabase.rpc)
+-- 5. Block functions (supabase.rpc)
 -- ---------------------------------------------------------------------
 -- Blocking also ends any friendship or pending request between you.
 create function public.block_user(target_id uuid)
@@ -1868,7 +1960,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 32f. Permissions
+-- 6. Permissions
 -- ---------------------------------------------------------------------
 -- Internal helpers: they would tell anyone who blocked whom, so only the
 -- functions above (which run as the owner) can call them.
@@ -1888,8 +1980,13 @@ grant  execute on function public.get_my_blocks()                 to authenticat
 grant  execute on function public.get_blocked_conversations()     to authenticated;
 
 
+-- =====================================================================
+-- 11. Online status privacy, message requests, rate limit, storage clean-up and account deletion
+--    (20261004000000_safety_and_privacy.sql)
+-- =====================================================================
+
 -- ---------------------------------------------------------------------
--- 33a. Online status and "last seen" only for the people you chat with
+-- 1. Online status and "last seen" only for the people you chat with
 -- ---------------------------------------------------------------------
 -- Before: one "online-users" channel that every signed-in user could watch,
 -- and last_seen_at readable by anyone. Now presence travels on each
@@ -1938,7 +2035,7 @@ create policy "Members can say they are typing or online"
 
 
 -- ---------------------------------------------------------------------
--- 33b. Message requests
+-- 2. Message requests
 -- ---------------------------------------------------------------------
 -- A one-to-one chat someone else started is a "request" for you until you
 -- accept it or reply, unless you're friends. Requests don't notify you,
@@ -2148,7 +2245,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 33c. Rate limit: at most 15 messages per person every 10 seconds
+-- 3. Rate limit: at most 15 messages per person every 10 seconds
 -- ---------------------------------------------------------------------
 create index messages_sender_created_idx on public.messages (sender_id, created_at desc);
 
@@ -2175,7 +2272,7 @@ create trigger messages_limit_rate
 
 
 -- ---------------------------------------------------------------------
--- 33d. Files nobody uses any more
+-- 4. Files nobody uses any more
 -- ---------------------------------------------------------------------
 -- Chat files whose message never got saved (or whose conversation is gone),
 -- and replaced profile or group photos. Only files older than an hour, so an
@@ -2208,7 +2305,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 33e. Deleting an account
+-- 5. Deleting an account
 -- ---------------------------------------------------------------------
 -- The delete-account Edge Function deletes the auth user; the profile goes
 -- with it and takes messages, friendships, blocks and devices along (foreign
@@ -2258,7 +2355,7 @@ create trigger profiles_before_delete
 
 
 -- ---------------------------------------------------------------------
--- 33f. Permissions
+-- 6. Permissions
 -- ---------------------------------------------------------------------
 -- Would reveal things about other people: server-side only.
 revoke execute on function public.is_message_request(uuid, uuid)  from public, anon, authenticated;
@@ -2280,6 +2377,11 @@ grant  execute on function public.accept_message_request(uuid)    to authenticat
 grant  execute on function public.get_my_conversations()          to authenticated;
 
 
+-- =====================================================================
+-- 12. Live updates through one private channel per person
+--    (20261005000000_live_updates_broadcast.sql)
+-- =====================================================================
+
 -- Before: every browser listened to Postgres Changes on whole tables, so the
 -- server checked every new row against every connected user's permissions,
 -- and any change to a conversation (including each new message bumping
@@ -2295,7 +2397,7 @@ grant  execute on function public.get_my_conversations()          to authenticat
 
 
 -- ---------------------------------------------------------------------
--- 34a. Sending
+-- 1. Sending
 -- ---------------------------------------------------------------------
 create function public.send_to_user(uid uuid, event text, payload jsonb)
 returns void
@@ -2324,7 +2426,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 34b. What triggers an update
+-- 2. What triggers an update
 -- ---------------------------------------------------------------------
 create function public.broadcast_message()
 returns trigger
@@ -2416,7 +2518,7 @@ create trigger friendships_broadcast
 
 
 -- ---------------------------------------------------------------------
--- 34c. Who can listen
+-- 3. Who can listen
 -- ---------------------------------------------------------------------
 -- Your own channel only. Nobody can send on it from the app: only the triggers above.
 create policy "People receive their own live updates"
@@ -2425,14 +2527,14 @@ create policy "People receive their own live updates"
 
 
 -- ---------------------------------------------------------------------
--- 34d. Postgres Changes are no longer used
+-- 4. Postgres Changes are no longer used
 -- ---------------------------------------------------------------------
 alter publication supabase_realtime
   drop table public.messages, public.conversation_participants, public.conversations, public.friendships;
 
 
 -- ---------------------------------------------------------------------
--- 34e. Permissions
+-- 5. Permissions
 -- ---------------------------------------------------------------------
 revoke execute on function public.send_to_user(uuid, text, jsonb)               from public, anon, authenticated;
 revoke execute on function public.send_to_members(uuid, text, jsonb, uuid)      from public, anon, authenticated;
@@ -2442,8 +2544,13 @@ revoke execute on function public.broadcast_conversation()                     f
 revoke execute on function public.broadcast_friendship()                       from public, anon, authenticated;
 
 
+-- =====================================================================
+-- 13. Replies, reactions, edit and delete for everyone, mentions, search, pinned and saved messages, reports, link previews, group descriptions and invite links
+--    (20261006000000_messaging_features.sql)
+-- =====================================================================
+
 -- ---------------------------------------------------------------------
--- 35a. New message fields
+-- 1. New message fields
 -- ---------------------------------------------------------------------
 alter table public.messages
   add column reply_to_id uuid references public.messages (id) on delete set null,
@@ -2501,7 +2608,7 @@ create trigger messages_prepare
 
 
 -- ---------------------------------------------------------------------
--- 35b. Edit and delete for everyone
+-- 2. Edit and delete for everyone
 -- ---------------------------------------------------------------------
 -- Your own text messages, within 15 minutes.
 create function public.edit_message(msg_id uuid, new_content text)
@@ -2554,7 +2661,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 35c. Reactions: one per person per message
+-- 3. Reactions: one per person per message
 -- ---------------------------------------------------------------------
 create table public.message_reactions (
   message_id uuid not null references public.messages (id) on delete cascade,
@@ -2603,7 +2710,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 35d. Pinned messages (for everyone in the chat) and saved messages (just for you)
+-- 4. Pinned messages (for everyone in the chat) and saved messages (just for you)
 -- ---------------------------------------------------------------------
 -- In a group only admins pin. Up to 3 per chat.
 create function public.pin_message(msg_id uuid, pinned boolean)
@@ -2665,7 +2772,7 @@ grant select, insert, delete on public.saved_messages to authenticated;
 
 
 -- ---------------------------------------------------------------------
--- 35e. Live updates for edits, deletions, pins and reactions
+-- 5. Live updates for edits, deletions, pins and reactions
 -- ---------------------------------------------------------------------
 create function public.broadcast_message_update()
 returns trigger
@@ -2688,7 +2795,7 @@ create trigger messages_broadcast_update
 
 
 -- ---------------------------------------------------------------------
--- 35f. Mentions reach you even in a muted group
+-- 6. Mentions reach you even in a muted group
 -- ---------------------------------------------------------------------
 drop function public.push_recipients(uuid, uuid);
 
@@ -2708,7 +2815,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 35g. Search your messages (English and Arabic alike: trigram matching)
+-- 7. Search your messages (English and Arabic alike: trigram matching)
 -- ---------------------------------------------------------------------
 create extension if not exists pg_trgm with schema extensions;
 
@@ -2737,7 +2844,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 35h. Reporting people and messages
+-- 8. Reporting people and messages
 -- ---------------------------------------------------------------------
 -- Nobody can read reports through the API: they're for whoever runs Hamsa,
 -- in the Supabase dashboard. The message text is kept, in case it is deleted later.
@@ -2794,7 +2901,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 35i. Link previews (filled in by the link-preview Edge Function)
+-- 9. Link previews (filled in by the link-preview Edge Function)
 -- ---------------------------------------------------------------------
 -- Only text: title, description, site. No images, so no third-party server
 -- ever learns who read a message.
@@ -2811,7 +2918,7 @@ alter table public.link_previews enable row level security;
 
 
 -- ---------------------------------------------------------------------
--- 35j. Group description and invite links
+-- 10. Group description and invite links
 -- ---------------------------------------------------------------------
 alter table public.conversations
   add column description text check (description is null or char_length(description) <= 500),
@@ -2909,7 +3016,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 35k. The sidebar list: description, invite link (admins), and deleted last messages
+-- 11. The sidebar list: description, invite link (admins), and deleted last messages
 -- ---------------------------------------------------------------------
 drop function public.get_my_conversations();
 
@@ -3001,7 +3108,7 @@ $$;
 
 
 -- ---------------------------------------------------------------------
--- 35l. Permissions
+-- 12. Permissions
 -- ---------------------------------------------------------------------
 revoke execute on function public.prepare_message()                         from public, anon, authenticated;
 revoke execute on function public.broadcast_message_update()                from public, anon, authenticated;

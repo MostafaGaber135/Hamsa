@@ -207,10 +207,12 @@ and focused, and clicking a notification opens that exact chat.
 
 ### 1. Create a Supabase project
 
-Create a free project at [supabase.com](https://supabase.com). In **SQL Editor → New query**, paste and run
-[`supabase/schema.sql`](supabase/schema.sql) once. It creates every table, policy, function, storage bucket and Realtime rule.
+Create a free project at [supabase.com](https://supabase.com), then create the database, either way:
 
-> The same schema is also split into step-by-step files in [`supabase/migrations`](supabase/migrations), in the order it was built.
+- **With the Supabase CLI** (recommended): `npx supabase login`, `npx supabase link --project-ref <your-project-ref>`,
+  then `npm run db:push`. It applies [`supabase/migrations`](supabase/migrations) in order, and later only the new ones.
+- **By hand**: in **SQL Editor → New query**, paste and run [`supabase/schema.sql`](supabase/schema.sql) once.
+  It's all the migrations in one file, generated from them (`npm run db:schema`), so the two never differ.
 
 ### 2. Configure environment variables
 
@@ -324,25 +326,50 @@ src/
 │   ├── privacy/          Blocking people, who can add you to groups
 │   ├── realtime/         Live updates, presence, typing
 │   └── legal/            Privacy policy
-├── lib/                  Supabase client, router, i18n and dates, theme, cache persistence, monitoring
+├── lib/                  Supabase client, router, i18n (en.ts, ar.ts loaded on demand), theme, cache, monitoring
 ├── sw.ts                 Service worker: offline app shell, push, notification buttons, share target
 ├── styles/               Design tokens and the Tailwind theme
 └── types/                App types and generated database types
 supabase/
-├── schema.sql            The complete database in one file
+├── config.toml           Local Supabase (npm run db:start)
+├── schema.sql            The complete database in one file, generated from the migrations
 ├── functions/            Edge Functions: send-push, notification-action, link-preview, delete-account, cleanup-storage
 ├── email-templates/      Verification and reset emails with the 6-digit code
 ├── migrations/           The same schema, step by step
 └── tests/                SQL tests for the security rules
+e2e/                      Playwright: two browsers, one conversation
+scripts/                  build-schema.mjs, test-db.mjs
+.github/workflows/ci.yml  CI
 ```
 
 Each feature keeps its own `api.ts` (Supabase calls), `queries.ts` (TanStack Query hooks) and components together.
 
 ---
 
+## Development
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | The app, on <http://localhost:5173> |
+| `npm run lint` · `npm run typecheck` | oxlint · TypeScript (app, service worker, config) |
+| `npm test` | Unit tests (Vitest): data validation, routing, message status, text direction, previews |
+| `npm run test:db` | The SQL tests on a fresh database with `schema.sql` (needs `psql`, or `PSQL="docker exec -i <container> psql -U postgres"`) |
+| `npm run db:start` | A local Supabase in Docker, with every migration applied |
+| `npm run test:e2e` | Playwright against the local Supabase: two people sign up, one writes, the other sees it live and replies |
+| `npm run db:schema` | Rebuild `supabase/schema.sql` after changing or adding a migration |
+| `npm run db:types` | Regenerate `src/types/database.generated.ts` from the local database |
+| `npm run db:push` | Apply new migrations to the linked Supabase project |
+
+**CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every pull request: lint, types, unit
+tests and the build; the SQL tests (and a check that `schema.sql` matches the migrations); then, against a local
+Supabase with every migration applied, a check that the generated types are current and the end-to-end test.
+
+---
+
 ## Roadmap
 
-- [ ] Unit tests (Vitest) and end-to-end tests (Playwright) in CI
+- [ ] Group calls, and a TURN relay so calls connect on every network
+- [ ] Photo albums (several photos in one message)
 
 ---
 
