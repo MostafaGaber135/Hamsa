@@ -184,8 +184,14 @@ export function LoginPage({ theme, onToggleTheme }: LoginPageProps) {
 
       <main className="flex flex-1 items-center justify-center px-4 pb-10">
         <div className="w-full max-w-sm rounded-3xl bg-surface p-6 shadow-md sm:p-8">
-          {mode === 'verify' ? <MailCheck size={40} strokeWidth={1.5} className="text-accent" aria-hidden /> : <BrandMark size={40} />}
-          <h1 className={lang === 'ar' ? 'mt-5 text-title-ar text-ink' : 'mt-5 text-title-2 text-ink'}>{titles[mode]}</h1>
+          {mode === 'verify' ? (
+            <MailCheck size={40} strokeWidth={1.5} className="text-accent" aria-hidden />
+          ) : (
+            <BrandMark size={40} />
+          )}
+          <h1 className={lang === 'ar' ? 'mt-5 text-title-ar text-ink' : 'mt-5 text-title-2 text-ink'}>
+            {titles[mode]}
+          </h1>
           <p className="mt-1 text-body text-ink-muted">{subtitles[mode]}</p>
 
           {(mode === 'signIn' || mode === 'signUp') && (
@@ -202,7 +208,10 @@ export function LoginPage({ theme, onToggleTheme }: LoginPageProps) {
             </>
           )}
 
-          <form onSubmit={submit} className={cn('flex flex-col gap-4', mode !== 'signIn' && mode !== 'signUp' && 'mt-6')}>
+          <form
+            onSubmit={submit}
+            className={cn('flex flex-col gap-4', mode !== 'signIn' && mode !== 'signUp' && 'mt-6')}
+          >
             {mode === 'signUp' && (
               <TextField
                 label={t.auth.fullName}
@@ -242,7 +251,11 @@ export function LoginPage({ theme, onToggleTheme }: LoginPageProps) {
                   required
                 />
                 {mode === 'signIn' && (
-                  <button type="button" onClick={() => go('forgot')} className={cn(linkButton, 'self-end text-caption')}>
+                  <button
+                    type="button"
+                    onClick={() => go('forgot')}
+                    className={cn(linkButton, 'self-end text-caption')}
+                  >
                     {t.authFlow.forgot}
                   </button>
                 )}
@@ -270,7 +283,12 @@ export function LoginPage({ theme, onToggleTheme }: LoginPageProps) {
             </Button>
 
             {(mode === 'verify' || mode === 'reset') && (
-              <button type="button" onClick={resend} disabled={busy} className={cn(linkButton, 'self-center text-body')}>
+              <button
+                type="button"
+                onClick={resend}
+                disabled={busy}
+                className={cn(linkButton, 'self-center text-body')}
+              >
                 {t.authFlow.resend}
               </button>
             )}
@@ -280,15 +298,21 @@ export function LoginPage({ theme, onToggleTheme }: LoginPageProps) {
             {mode === 'signIn' ? (
               <>
                 {t.auth.toSignUp}{' '}
-                <button type="button" onClick={() => go('signUp')} className={linkButton}>{t.auth.switchToSignUp}</button>
+                <button type="button" onClick={() => go('signUp')} className={linkButton}>
+                  {t.auth.switchToSignUp}
+                </button>
               </>
             ) : mode === 'signUp' ? (
               <>
                 {t.auth.toSignIn}{' '}
-                <button type="button" onClick={() => go('signIn')} className={linkButton}>{t.auth.switchToSignIn}</button>
+                <button type="button" onClick={() => go('signIn')} className={linkButton}>
+                  {t.auth.switchToSignIn}
+                </button>
               </>
             ) : (
-              <button type="button" onClick={() => go('signIn')} className={linkButton}>{t.authFlow.backToSignIn}</button>
+              <button type="button" onClick={() => go('signIn')} className={linkButton}>
+                {t.authFlow.backToSignIn}
+              </button>
             )}
           </p>
         </div>
@@ -321,12 +345,18 @@ function Note({ tone, children }: { tone: 'danger' | 'info'; children: ReactNode
   )
 }
 
-/** Placeholder glyph. Swap in Google's official sign-in mark before shipping. */
+/** Google's "G" in its brand colours, as Google's sign-in branding guidelines require. */
 function GoogleMark() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
-      <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.2-2.1 3.5-5.1 3.5-8.7z" />
-      <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1A12 12 0 0 0 12 24z" />
+      <path
+        fill="#4285F4"
+        d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.2-2.1 3.5-5.1 3.5-8.7z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1A12 12 0 0 0 12 24z"
+      />
       <path fill="#FBBC05" d="M5.3 14.3a7.2 7.2 0 0 1 0-4.6V6.6H1.3a12 12 0 0 0 0 10.8l4-3.1z" />
       <path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.3 6.6l4 3.1c.9-2.9 3.6-4.9 6.7-4.9z" />
     </svg>

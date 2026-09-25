@@ -44,13 +44,15 @@ interface SidebarProps {
   onOpenMessage?: (conversationId: string, messageId: string) => void
 }
 
+/** Characters shown before a search match, so it's visible in a two-line preview. */
+const MATCH_CONTEXT_CHARS = 30
+
 /** The text with the searched words marked. */
 function Highlight({ text, query }: { text: string; query: string }) {
   const q = query.trim()
   const at = q ? text.toLocaleLowerCase().indexOf(q.toLocaleLowerCase()) : -1
   if (at < 0) return <>{text}</>
-  // Start a little before the match, so it's visible in a two-line preview.
-  const from = Math.max(0, at - 30)
+  const from = Math.max(0, at - MATCH_CONTEXT_CHARS)
   return (
     <>
       {from > 0 && '…'}
@@ -88,11 +90,14 @@ export function Sidebar(props: SidebarProps) {
               <Users size={18} strokeWidth={1.75} />
             </IconButton>
             {props.friendRequests > 0 && (
-              <Badge count={props.friendRequests} className="pointer-events-none absolute -end-1 -top-1 ring-2 ring-surface" />
+              <Badge
+                count={props.friendRequests}
+                className="pointer-events-none absolute -inset-e-1 -top-1 ring-2 ring-surface"
+              />
             )}
           </span>
           <Button size="sm" onClick={props.onNewChat} icon={<SquarePen size={16} strokeWidth={1.75} aria-hidden />}>
-          {t.newChat}
+            {t.newChat}
           </Button>
         </div>
       </header>
@@ -155,10 +160,15 @@ export function Sidebar(props: SidebarProps) {
                     <button
                       type="button"
                       onClick={() => props.onOpenMessage?.(result.conversationId, result.id)}
-                      className={cn('flex w-full flex-col rounded-2xl px-3 py-2 text-start hover:bg-surface-hover', focusRing)}
+                      className={cn(
+                        'flex w-full flex-col rounded-2xl px-3 py-2 text-start hover:bg-surface-hover',
+                        focusRing,
+                      )}
                     >
                       <span className="flex w-full items-baseline justify-between gap-2">
-                        <span dir="auto" className="min-w-0 truncate text-name text-ink">{result.title}</span>
+                        <span dir="auto" className="min-w-0 truncate text-name text-ink">
+                          {result.title}
+                        </span>
                         <span className="shrink-0 text-meta text-ink-subtle">{fmt.listTime(result.createdAt)}</span>
                       </span>
                       <span dir="auto" className="line-clamp-2 text-preview text-ink-muted">
@@ -189,11 +199,17 @@ export function Sidebar(props: SidebarProps) {
         >
           <Avatar id={currentUser.id} name={currentUser.name} src={currentUser.avatarUrl} online />
           <span className="min-w-0 flex-1">
-            <span dir="auto" className={cn('block truncate text-body font-bold text-ink', lang === 'ar' ? 'text-right' : 'text-left')}>
+            <span
+              dir="auto"
+              className={cn('block truncate text-body font-bold text-ink', lang === 'ar' ? 'text-right' : 'text-left')}
+            >
               {currentUser.name}
             </span>
             {currentUser.username && (
-              <span dir="ltr" className={cn('block truncate text-caption text-ink-muted', lang === 'ar' ? 'text-right' : 'text-left')}>
+              <span
+                dir="ltr"
+                className={cn('block truncate text-caption text-ink-muted', lang === 'ar' ? 'text-right' : 'text-left')}
+              >
                 @{currentUser.username}
               </span>
             )}

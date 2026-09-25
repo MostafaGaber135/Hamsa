@@ -7,7 +7,9 @@ const STORAGE_KEY = 'hamsa:drafts'
 
 function readAll(): Record<string, string> {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (!saved) return {}
+    const parsed = JSON.parse(saved)
     return parsed && typeof parsed === 'object' ? parsed : {}
   } catch {
     return {}

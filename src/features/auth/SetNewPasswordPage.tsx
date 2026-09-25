@@ -25,10 +25,15 @@ export function SetNewPasswordPage({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-canvas px-4">
-      <form onSubmit={submit} className="flex w-full max-w-sm flex-col gap-4 rounded-3xl bg-surface p-6 shadow-md sm:p-8">
+      <form
+        onSubmit={submit}
+        className="flex w-full max-w-sm flex-col gap-4 rounded-3xl bg-surface p-6 shadow-md sm:p-8"
+      >
         <KeyRound size={40} strokeWidth={1.5} className="text-accent" aria-hidden />
         <div>
-          <h1 className={lang === 'ar' ? 'text-title-ar text-ink' : 'text-title-2 text-ink'}>{t.authFlow.setNewTitle}</h1>
+          <h1 className={lang === 'ar' ? 'text-title-ar text-ink' : 'text-title-2 text-ink'}>
+            {t.authFlow.setNewTitle}
+          </h1>
           <p className="mt-1 text-body text-ink-muted">{t.authFlow.setNewBody}</p>
         </div>
         <TextField

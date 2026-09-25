@@ -15,6 +15,8 @@ const OWNER_KEY = 'hamsa:cache-owner'
 const CACHE_VERSION = '1'
 /** Photos and files are shown through links that expire after 24 hours. */
 const MAX_AGE_MS = 12 * 60 * 60 * 1000
+/** Saved at most once a second, however often the cache changes. */
+const SAVE_THROTTLE_MS = 1000
 
 // IndexedDB can be missing or blocked (private windows, strict settings):
 // then there's simply no saved cache, and the app works as before.
@@ -33,7 +35,7 @@ const persister = createAsyncStoragePersister({
     removeItem: (key) => attempt(() => del(key)).then(() => undefined),
   },
   key: STORAGE_KEY,
-  throttleTime: 1000,
+  throttleTime: SAVE_THROTTLE_MS,
 })
 
 /** Only data worth showing at start-up, and never a message that's still sending. */

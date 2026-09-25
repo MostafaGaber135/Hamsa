@@ -1,10 +1,9 @@
-import { extensionFor, resizeImage } from '@/lib/image'
+import { AVATAR_SIZE, extensionFor, resizeImage } from '@/lib/image'
 import { detachPush } from '@/lib/push'
 import { supabase } from '@/lib/supabase'
 
 export const USERNAME_PATTERN = /^[a-z0-9_]{3,24}$/
 const BUCKET = 'avatars'
-const AVATAR_SIZE = 256
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 export class UsernameTakenError extends Error {}

@@ -1,5 +1,5 @@
 /** What was shared to Hamsa from another app, waiting for a chat's message box. */
-export interface IncomingShare {
+interface IncomingShare {
   text?: string
   file?: File
 }

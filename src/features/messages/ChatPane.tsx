@@ -48,9 +48,28 @@ interface ChatPaneProps {
 }
 
 export function ChatPane({
-  conversation, title, peer, messages, users, currentUserId, onBack, onSend, onRetry,
-  hasOlder, loadingOlder, onLoadOlder, threadPlaceholder, onTyping, connection, onToggleDetails, detailsOpen,
-  blocked, onUnblock, request, jumpTarget, onCall,
+  conversation,
+  title,
+  peer,
+  messages,
+  users,
+  currentUserId,
+  onBack,
+  onSend,
+  onRetry,
+  hasOlder,
+  loadingOlder,
+  onLoadOlder,
+  threadPlaceholder,
+  onTyping,
+  connection,
+  onToggleDetails,
+  detailsOpen,
+  blocked,
+  onUnblock,
+  request,
+  jumpTarget,
+  onCall,
 }: ChatPaneProps) {
   const { t, fmt, lang } = useLocale()
   const [viewing, setViewing] = useState<string | null>(null)
@@ -95,7 +114,9 @@ export function ChatPane({
             online={!conversation.isGroup && peer?.online}
           />
           <span className="min-w-0">
-            <span dir="auto" className={cn('block truncate text-name text-ink', align)}>{title}</span>
+            <span dir="auto" className={cn('block truncate text-name text-ink', align)}>
+              {title}
+            </span>
             <span className={cn('block truncate text-caption text-ink-muted', align)}>{subtitle}</span>
           </span>
         </button>
@@ -128,79 +149,88 @@ export function ChatPane({
 
       {/* Your chosen background sits behind the messages and the composer. */}
       <div className="flex min-h-0 flex-1 flex-col" style={wallpaperStyle(conversation.wallpaper)}>
-      {threadPlaceholder ?? (
-      <MessageThread
-        onOpen={(m) => setViewing(m.id)}
-        hasOlder={hasOlder}
-        loadingOlder={loadingOlder}
-        onLoadOlder={onLoadOlder}
-        messages={messages}
-        users={users}
-        currentUserId={currentUserId}
-        conversation={conversation}
-        typingUsers={typingUsers}
-        onRetry={onRetry}
-        onReply={(message) => {
-          setEditing(null)
-          setReplyTo(message)
-        }}
-        onEdit={(message) => {
-          setReplyTo(null)
-          setEditing(message)
-        }}
-        jumpTarget={jump}
-      />
-      )}
-
-      <div className="shrink-0 px-3 pt-1 pb-3 md:px-5 md:pb-5">
-        {request && (
-          <div
-            role="region"
-            aria-label={t.request.title}
-            className="mb-2 flex flex-col items-center gap-3 rounded-3xl bg-surface-raised px-4 py-3 text-center ring-1 ring-line"
-          >
-            <p dir="auto" className="text-body text-ink-muted">{t.request.notice(title)}</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              <Button size="sm" onClick={request.onAccept}>{t.request.accept}</Button>
-              <Button size="sm" variant="secondary" onClick={request.onDelete}>{t.request.delete}</Button>
-              <Button size="sm" variant="ghost" className="text-danger hover:text-danger" onClick={request.onBlock}>
-                {t.request.block}
-              </Button>
-            </div>
-          </div>
-        )}
-        {blocked ? (
-          <div
-            role="status"
-            className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-3xl bg-surface-raised px-4 py-3 text-center text-body text-ink-muted ring-1 ring-line"
-          >
-            <span dir="auto">{blocked === 'byMe' ? t.block.youBlocked(title) : t.block.cantReply}</span>
-            {blocked === 'byMe' && onUnblock && (
-              <Button variant="secondary" size="sm" onClick={onUnblock}>
-                {t.privacySettings.unblock}
-              </Button>
-            )}
-          </div>
-        ) : (
-          <Composer
-            key={conversation.id}
-            conversationId={conversation.id}
-            recipientName={title}
-            onSend={onSend}
-            onTyping={onTyping}
-            replyTo={
-              replyTo
-                ? { message: replyTo, senderName: replyTo.senderId === currentUserId ? t.you : (users[replyTo.senderId]?.name ?? '') }
-                : undefined
-            }
-            onCancelReply={() => setReplyTo(null)}
-            editing={editing ?? undefined}
-            onSaveEdit={(message, content) => edit.mutate({ message, content })}
-            onCancelEdit={() => setEditing(null)}
-            mentionable={mentionable}
+        {threadPlaceholder ?? (
+          <MessageThread
+            onOpen={(m) => setViewing(m.id)}
+            hasOlder={hasOlder}
+            loadingOlder={loadingOlder}
+            onLoadOlder={onLoadOlder}
+            messages={messages}
+            users={users}
+            currentUserId={currentUserId}
+            conversation={conversation}
+            typingUsers={typingUsers}
+            onRetry={onRetry}
+            onReply={(message) => {
+              setEditing(null)
+              setReplyTo(message)
+            }}
+            onEdit={(message) => {
+              setReplyTo(null)
+              setEditing(message)
+            }}
+            jumpTarget={jump}
           />
         )}
-      </div>
+
+        <div className="shrink-0 px-3 pt-1 pb-3 md:px-5 md:pb-5">
+          {request && (
+            <div
+              role="region"
+              aria-label={t.request.title}
+              className="mb-2 flex flex-col items-center gap-3 rounded-3xl bg-surface-raised px-4 py-3 text-center ring-1 ring-line"
+            >
+              <p dir="auto" className="text-body text-ink-muted">
+                {t.request.notice(title)}
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button size="sm" onClick={request.onAccept}>
+                  {t.request.accept}
+                </Button>
+                <Button size="sm" variant="secondary" onClick={request.onDelete}>
+                  {t.request.delete}
+                </Button>
+                <Button size="sm" variant="ghost" className="text-danger hover:text-danger" onClick={request.onBlock}>
+                  {t.request.block}
+                </Button>
+              </div>
+            </div>
+          )}
+          {blocked ? (
+            <div
+              role="status"
+              className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-3xl bg-surface-raised px-4 py-3 text-center text-body text-ink-muted ring-1 ring-line"
+            >
+              <span dir="auto">{blocked === 'byMe' ? t.block.youBlocked(title) : t.block.cantReply}</span>
+              {blocked === 'byMe' && onUnblock && (
+                <Button variant="secondary" size="sm" onClick={onUnblock}>
+                  {t.privacySettings.unblock}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <Composer
+              key={conversation.id}
+              conversationId={conversation.id}
+              recipientName={title}
+              onSend={onSend}
+              onTyping={onTyping}
+              replyTo={
+                replyTo
+                  ? {
+                      message: replyTo,
+                      senderName: replyTo.senderId === currentUserId ? t.you : (users[replyTo.senderId]?.name ?? ''),
+                    }
+                  : undefined
+              }
+              onCancelReply={() => setReplyTo(null)}
+              editing={editing ?? undefined}
+              onSaveEdit={(message, content) => edit.mutate({ message, content })}
+              onCancelEdit={() => setEditing(null)}
+              mentionable={mentionable}
+            />
+          )}
+        </div>
       </div>
 
       {viewing && (
@@ -235,7 +265,9 @@ function PinnedBar({ conversationId, onJump }: { conversationId: string; onJump:
         <span className="block text-caption font-bold text-accent">
           {t.msg.pinned(`${fmt.number((index % list.length) + 1)}/${fmt.number(list.length)}`)}
         </span>
-        <span dir="auto" className="block truncate text-caption text-ink-muted">{messagePreview(current, t)}</span>
+        <span dir="auto" className="block truncate text-caption text-ink-muted">
+          {messagePreview(current, t)}
+        </span>
       </span>
     </button>
   )

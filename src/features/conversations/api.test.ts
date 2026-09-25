@@ -52,7 +52,13 @@ describe('toMessage', () => {
   }
 
   it('maps a plain text message', () => {
-    expect(toMessage(row)).toMatchObject({ id: 'm1', conversationId: 'c1', senderId: 'u1', kind: 'text', content: 'hi' })
+    expect(toMessage(row)).toMatchObject({
+      id: 'm1',
+      conversationId: 'c1',
+      senderId: 'u1',
+      kind: 'text',
+      content: 'hi',
+    })
   })
 
   it('treats a row with an image and no kind as an image (older messages)', () => {

@@ -9,7 +9,7 @@ export interface ConfirmOptions {
   danger?: boolean
 }
 
-export type Confirm = (options: ConfirmOptions) => Promise<boolean>
+type Confirm = (options: ConfirmOptions) => Promise<boolean>
 
 export const ConfirmContext = createContext<Confirm | null>(null)
 

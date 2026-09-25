@@ -10,6 +10,18 @@ const FILES = 'chat-files'
 const SIGNED_URL_SECONDS = 60 * 60 * 24
 export const MAX_IMAGE_BYTES = 20 * 1024 * 1024
 export const MAX_FILE_BYTES = 50 * 1024 * 1024
+/** Download links are made when you tap Download, so they only need to last minutes. */
+const DOWNLOAD_LINK_SECONDS = 10 * 60
+/** The chat info panel shows this many photos, files, voice notes or links per tab. */
+const SHARED_ITEMS_LIMIT = 90
+/** Photos are resized to at most this many pixels on the long side (GIFs are kept as they are). */
+const MAX_IMAGE_SIDE = 1600
+/** Stored file names keep their last this-many characters (the extension). */
+const MAX_FILE_NAME_CHARS = 80
+/** A file whose name has no usable characters is stored as this. */
+const UNNAMED_FILE = 'file'
+/** The content type for files the browser couldn't identify. */
+const UNKNOWN_FILE_TYPE = 'application/octet-stream'
 
 const COLUMNS =
   'id, conversation_id, sender_id, content, image_path, created_at, kind, attachment, reply_to_id, edited_at, deleted_at, pinned_at, mentions, message_reactions(user_id, emoji)'
@@ -45,13 +57,17 @@ export async function downloadUrl(message: Message): Promise<string | undefined>
   if (!path) return undefined
   const { data, error } = await supabase.storage
     .from(bucket)
-    .createSignedUrl(path, 60 * 10, { download: message.attachment?.name ?? true })
+    .createSignedUrl(path, DOWNLOAD_LINK_SECONDS, { download: message.attachment?.name ?? true })
   if (error) throw error
   return data.signedUrl
 }
 
 /** One page of messages, oldest first. `before` is the createdAt of the oldest message already loaded. */
-export async function fetchMessagePage(conversationId: string, before?: string, clearedAt?: string): Promise<Message[]> {
+export async function fetchMessagePage(
+  conversationId: string,
+  before?: string,
+  clearedAt?: string,
+): Promise<Message[]> {
   let query = supabase
     .from('messages')
     .select(COLUMNS)
@@ -78,7 +94,7 @@ export async function fetchSharedItems(conversationId: string, tab: SharedTab, c
     .eq('conversation_id', conversationId)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
-    .limit(90)
+    .limit(SHARED_ITEMS_LIMIT)
 
   if (tab === 'media') query = query.in('kind', ['image', 'video'])
   if (tab === 'files') query = query.eq('kind', 'file')
@@ -113,7 +129,7 @@ export function kindForFile(file: File): MessageKind {
 
 // ---------- uploads with progress ----------
 
-export interface UploadOptions {
+interface UploadOptions {
   /** 0 to 1, as the file goes up. */
   onProgress?: (fraction: number) => void
   /** Aborting cancels the upload (and the message). */
@@ -124,7 +140,13 @@ export interface UploadOptions {
  * Uploads to Storage with XMLHttpRequest, which reports progress (fetch, and so
  * supabase-js, can't). Same endpoint and rules: Storage still checks you're a member.
  */
-async function upload(bucket: string, path: string, body: Blob, contentType: string, { onProgress, signal }: UploadOptions) {
+async function upload(
+  bucket: string,
+  path: string,
+  body: Blob,
+  contentType: string,
+  { onProgress, signal }: UploadOptions,
+) {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token ?? supabaseConfig.key
   const encodedPath = path.split('/').map(encodeURIComponent).join('/')
@@ -152,24 +174,34 @@ async function upload(bucket: string, path: string, body: Blob, contentType: str
   })
 }
 
-async function uploadImage(conversationId: string, messageId: string, file: File, options: UploadOptions): Promise<string> {
+async function uploadImage(
+  conversationId: string,
+  messageId: string,
+  file: File,
+  options: UploadOptions,
+): Promise<string> {
   // GIFs keep their animation; everything else is resized to at most 1600 px.
-  const blob = file.type === 'image/gif' ? file : await resizeImage(file, { maxSide: 1600 })
+  const blob = file.type === 'image/gif' ? file : await resizeImage(file, { maxSide: MAX_IMAGE_SIDE })
   const extension = file.type === 'image/gif' ? 'gif' : extensionFor(blob)
   const path = `${conversationId}/${messageId}.${extension}`
   await upload(IMAGES, path, blob, blob.type, options)
   return path
 }
 
-async function uploadFile(conversationId: string, messageId: string, file: File, options: UploadOptions): Promise<string> {
+async function uploadFile(
+  conversationId: string,
+  messageId: string,
+  file: File,
+  options: UploadOptions,
+): Promise<string> {
   // The message id as the folder keeps names unique and makes a retry safe.
-  const safeName = file.name.replace(/[^\w.-]+/g, '_').slice(-80) || 'file'
+  const safeName = file.name.replace(/[^\w.-]+/g, '_').slice(-MAX_FILE_NAME_CHARS) || UNNAMED_FILE
   const path = `${conversationId}/${messageId}/${safeName}`
-  await upload(FILES, path, file, file.type || 'application/octet-stream', options)
+  await upload(FILES, path, file, file.type || UNKNOWN_FILE_TYPE, options)
   return path
 }
 
-export interface OutgoingMessage {
+interface OutgoingMessage {
   id: string
   conversationId: string
   kind: MessageKind
@@ -260,7 +292,7 @@ export async function reportUser(userId: string, messageId: string | null, reaso
   if (error) throw error
 }
 
-export interface SearchResult {
+interface SearchResult {
   id: string
   conversationId: string
   senderId: string
@@ -281,7 +313,7 @@ export async function searchMessages(query: string): Promise<SearchResult[]> {
   }))
 }
 
-export interface LinkPreview {
+interface LinkPreview {
   title: string | null
   description: string | null
   siteName: string | null

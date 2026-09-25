@@ -54,7 +54,10 @@ export function useLiveConversations({ userId, me, serverConversations, openConv
   // Call signals arrive on the same channels; the call hook is created just below.
   const callSignal = useRef<(conversationId: string, signal: unknown) => void>(undefined)
   const channels = useConversationChannels(
-    conversationIds, userId, privacy.data?.presence === 'contacts', requestIds,
+    conversationIds,
+    userId,
+    privacy.data?.presence === 'contacts',
+    requestIds,
     (conversationId, signal) => callSignal.current?.(conversationId, signal),
   )
   const { online, wentOfflineAt, typing, sendTyping, stopTyping } = channels

@@ -22,8 +22,14 @@ export function ReplyQuote({ replyToId, out }: { replyToId: string; out: boolean
         out ? 'border-accent bg-surface/50' : 'border-accent bg-accent-soft',
       )}
     >
-      {sender && <span dir="auto" className="block truncate text-caption font-bold">{sender}</span>}
-      <span dir="auto" className="line-clamp-2 text-caption opacity-80">{text}</span>
+      {sender && (
+        <span dir="auto" className="block truncate text-caption font-bold">
+          {sender}
+        </span>
+      )}
+      <span dir="auto" className="line-clamp-2 text-caption opacity-80">
+        {text}
+      </span>
     </button>
   )
 }
@@ -42,7 +48,7 @@ export function Reactions({ message, out }: { message: Message; out: boolean }) 
   return (
     <div className={cn('-mt-1.5 flex flex-wrap gap-1 px-1', out ? 'justify-end' : 'justify-start')}>
       {[...groups].map(([emoji, userIds]) => {
-        const names = userIds.map((id) => (id === currentUserId ? t.you : users[id]?.name ?? '')).join(', ')
+        const names = userIds.map((id) => (id === currentUserId ? t.you : (users[id]?.name ?? ''))).join(', ')
         const isMine = emoji === mine
         return (
           <button
@@ -58,7 +64,7 @@ export function Reactions({ message, out }: { message: Message; out: boolean }) 
             )}
           >
             <span aria-hidden>{emoji}</span>
-            {userIds.length > 1 && <span className="tabular-nums text-ink-muted">{userIds.length}</span>}
+            {userIds.length > 1 && <span className="text-ink-muted tabular-nums">{userIds.length}</span>}
           </button>
         )
       })}
@@ -81,9 +87,21 @@ export function LinkPreviewCard({ url, out }: { url: string; out: boolean }) {
         out ? 'border-accent bg-surface/50' : 'border-accent bg-surface-sunken',
       )}
     >
-      {siteName && <span dir="auto" className="block truncate text-meta uppercase opacity-70">{siteName}</span>}
-      {title && <span dir="auto" className="line-clamp-2 text-caption font-bold">{title}</span>}
-      {description && <span dir="auto" className="mt-0.5 line-clamp-2 text-caption opacity-80">{description}</span>}
+      {siteName && (
+        <span dir="auto" className="block truncate text-meta uppercase opacity-70">
+          {siteName}
+        </span>
+      )}
+      {title && (
+        <span dir="auto" className="line-clamp-2 text-caption font-bold">
+          {title}
+        </span>
+      )}
+      {description && (
+        <span dir="auto" className="mt-0.5 line-clamp-2 text-caption opacity-80">
+          {description}
+        </span>
+      )}
     </a>
   )
 }

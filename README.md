@@ -265,36 +265,45 @@ Supabase's built-in email only sends to your own team, so real users need your o
    [`reset-password.html`](supabase/email-templates/reset-password.html) into *Reset password*.
 3. **Authentication → Sign In / Providers → Email**: turn **Confirm email** on.
 
+### Edge Functions
+
+The functions share code in [`supabase/functions/_shared`](supabase/functions/_shared), so they're deployed
+with the Supabase CLI, not pasted into the Dashboard editor. After `npx supabase link` (step 1):
+
+```bash
+npm run functions:deploy
+```
+
+This deploys all five with **Verify JWT** off, as set in [`supabase/config.toml`](supabase/config.toml): each
+checks its own secret or the caller's token. A function whose required secret is missing answers with an error
+naming it. Run it again after adding a secret or changing a function.
+
 ### Push notifications (optional)
 
 1. Generate keys: `npx web-push generate-vapid-keys`.
 2. Add `VITE_VAPID_PUBLIC_KEY=<public key>` to `.env.local` and to Vercel.
-3. **Edge Functions → Deploy a new function → Via editor**: name it `send-push`, paste
-   [`supabase/functions/send-push/index.ts`](supabase/functions/send-push/index.ts), deploy, and turn
-   **Verify JWT** off in its settings (it checks its own secret instead).
+3. Deploy the functions (see [Edge Functions](#edge-functions)).
 4. **Edge Functions → Secrets**: add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
    `VAPID_SUBJECT` (`mailto:you@example.com`) and `WEBHOOK_SECRET` (any long random string).
 5. **Database → Webhooks → Create**: table `messages`, event *Insert*, type *Supabase Edge Functions*,
    function `send-push`, and an HTTP header `x-webhook-secret` with the same secret.
 6. In Hamsa: **My profile → Notifications → Turn on**. On iPhone, first *Share → Add to Home Screen*.
 7. Optional, the **Mark as read** button on notifications: add an `ACTION_SECRET` secret (any long random
-   string), and deploy [`supabase/functions/notification-action/index.ts`](supabase/functions/notification-action/index.ts)
-   as `notification-action` with **Verify JWT** off. Redeploy `send-push` so it picks up the secret.
+   string). `send-push` picks it up on its next start; `notification-action` needs it to work.
 
 ### Link previews
 
-Deploy [`supabase/functions/link-preview/index.ts`](supabase/functions/link-preview/index.ts) as `link-preview`
-with **Verify JWT** off (it checks the caller's token itself). Without it, links are still clickable, just without a preview.
+Needs only the deployed functions (see [Edge Functions](#edge-functions)); `link-preview` checks the caller's token
+itself. Without it, links are still clickable, just without a preview.
 
 ### Account deletion
 
-1. **Edge Functions → Deploy a new function → Via editor**: name it `delete-account`, paste
-   [`supabase/functions/delete-account/index.ts`](supabase/functions/delete-account/index.ts), deploy, and turn
-   **Verify JWT** off in its settings (it checks the caller's token itself).
+Needs only the deployed functions (see [Edge Functions](#edge-functions)); `delete-account` checks the caller's
+token itself.
 
 ### Storage clean-up (optional)
 
-1. Deploy [`supabase/functions/cleanup-storage/index.ts`](supabase/functions/cleanup-storage/index.ts) as `cleanup-storage` the same way, with **Verify JWT** off.
+1. Deploy the functions (see [Edge Functions](#edge-functions)).
 2. **Edge Functions → Secrets**: add `CRON_SECRET` (any long random string).
 3. **Integrations → Cron** (enable `pg_cron` and `pg_net` if asked) → **Create job**: daily (`0 3 * * *`),
    type *Supabase Edge Function*, function `cleanup-storage`, method POST, header `x-cron-secret` with the same secret.
@@ -318,7 +327,7 @@ src/
 │   ├── calls/            Voice and video calls (WebRTC)
 │   ├── chat/             The signed-in app shell
 │   ├── conversations/    Sidebar, conversation list and menu, new chat dialog
-│   ├── messages/         Thread, message bubble, composer, emoji picker
+│   ├── messages/         Thread, message bubble, composer, emoji and sticker picker, voice recorder
 │   ├── friends/          Friends, requests, people search
 │   ├── landing/          The public home page
 │   ├── share/            "Share to Hamsa" from other apps
@@ -333,12 +342,13 @@ src/
 supabase/
 ├── config.toml           Local Supabase (npm run db:start)
 ├── schema.sql            The complete database in one file, generated from the migrations
-├── functions/            Edge Functions: send-push, notification-action, link-preview, delete-account, cleanup-storage
+├── functions/            Edge Functions: send-push, notification-action, link-preview, delete-account, cleanup-storage;
+│                         _shared/: secrets, admin client, CORS, signed action tokens
 ├── email-templates/      Verification and reset emails with the 6-digit code
 ├── migrations/           The same schema, step by step
 └── tests/                SQL tests for the security rules
 e2e/                      Playwright: two browsers, one conversation
-scripts/                  build-schema.mjs, test-db.mjs
+scripts/                  Schema build, SQL test runner, e2e runner, Tailwind class check
 .github/workflows/ci.yml  CI
 ```
 
@@ -351,7 +361,11 @@ Each feature keeps its own `api.ts` (Supabase calls), `queries.ts` (TanStack Que
 | Command | What it does |
 |---|---|
 | `npm run dev` | The app, on <http://localhost:5173> |
+| `npm run format` · `npm run format:check` | Prettier (with Tailwind class sorting): fix, or only check |
 | `npm run lint` · `npm run typecheck` | oxlint · TypeScript (app, service worker, config) |
+| `npm run lint:tailwind` | Every Tailwind class in its canonical form (`node scripts/check-tailwind.mjs --fix` rewrites them) |
+| `npm run lint:unused` | knip: unused files, exports and dependencies |
+| `npm run typecheck:functions` | Deno type-check of the Edge Functions |
 | `npm test` | Unit tests (Vitest): data validation, routing, message status, text direction, previews |
 | `npm run test:db` | The SQL tests on a fresh database with `schema.sql` (needs `psql`, or `PSQL="docker exec -i <container> psql -U postgres"`) |
 | `npm run db:start` | A local Supabase in Docker, with every migration applied |
@@ -359,9 +373,13 @@ Each feature keeps its own `api.ts` (Supabase calls), `queries.ts` (TanStack Que
 | `npm run db:schema` | Rebuild `supabase/schema.sql` after changing or adding a migration |
 | `npm run db:types` | Regenerate `src/types/database.generated.ts` from the local database |
 | `npm run db:push` | Apply new migrations to the linked Supabase project |
+| `npm run functions:deploy` | Deploy every Edge Function to the linked Supabase project |
 
-**CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every pull request: lint, types, unit
-tests and the build; the SQL tests (and a check that `schema.sql` matches the migrations); then, against a local
+On every commit, a pre-commit hook (simple-git-hooks + lint-staged, set up by `npm install`) formats the
+staged files and lints the staged TypeScript.
+
+**CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every pull request: formatting, lint, Tailwind classes,
+unused code, types (app and Edge Functions), unit tests and the build; the SQL tests (and a check that `schema.sql` matches the migrations); then, against a local
 Supabase with every migration applied, a check that the generated types are current and the end-to-end test.
 
 ---

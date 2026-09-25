@@ -27,7 +27,7 @@ describe('withStatus', () => {
     expect(withStatus(message, 'me', [member('sara', after), member('omar', before)]).status).toBe('sent')
   })
 
-  it('gives other people\'s messages no status', () => {
+  it("gives other people's messages no status", () => {
     expect(withStatus({ ...message, senderId: 'sara' }, 'me', []).status).toBeUndefined()
   })
 })

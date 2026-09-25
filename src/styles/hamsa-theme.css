@@ -47,8 +47,8 @@
   --color-sender-sage: var(--sender-sage);
   --color-avatar-ink: var(--avatar-ink);
 
-  --font-sans: "Plus Jakarta Sans", "IBM Plex Sans Arabic", system-ui, sans-serif;
-  --font-arabic: "IBM Plex Sans Arabic", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --font-arabic: 'IBM Plex Sans Arabic', 'Plus Jakarta Sans', system-ui, sans-serif;
 
   --text-display: 36px;
   --text-display--line-height: 40px;

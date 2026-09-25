@@ -1,8 +1,22 @@
 import { useQuery } from '@tanstack/react-query'
 import { useConfirm } from '@/components/ui/confirm'
 import {
-  Camera, Check, CircleAlert, Copy, Flag, Link2, LogOut, MoreHorizontal, Pencil, RefreshCw, Search, Shield, Trash2, UserMinus,
-  UserPlus, X,
+  Camera,
+  Check,
+  CircleAlert,
+  Copy,
+  Flag,
+  Link2,
+  LogOut,
+  MoreHorizontal,
+  Pencil,
+  RefreshCw,
+  Search,
+  Shield,
+  Trash2,
+  UserMinus,
+  UserPlus,
+  X,
 } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
@@ -17,10 +31,9 @@ import { ReportDialog } from '@/features/privacy/ReportDialog'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
 import { useDebounced } from '@/lib/useDebounced'
-import { WALLPAPERS, wallpaperStyle } from '@/lib/wallpapers'
+import { DEFAULT_WALLPAPER, WALLPAPERS, wallpaperStyle } from '@/lib/wallpapers'
 import type { Conversation, ConversationAction, Member, Message, User } from '@/types/chat'
 import { useGroupAdmin, useProfileSearch, useSetWallpaper } from './queries'
-
 
 interface ConversationDetailsProps {
   conversation: Conversation
@@ -33,7 +46,15 @@ interface ConversationDetailsProps {
 }
 
 /** The "chat info" panel: shared media and files, wallpaper, and group settings. */
-export function ConversationDetails({ conversation, title, me, onClose, onOpenMedia, onAction, className }: ConversationDetailsProps) {
+export function ConversationDetails({
+  conversation,
+  title,
+  me,
+  onClose,
+  onOpenMedia,
+  onAction,
+  className,
+}: ConversationDetailsProps) {
   const { t, fmt } = useLocale()
   const confirm = useConfirm()
   const [editing, setEditing] = useState(false)
@@ -42,10 +63,7 @@ export function ConversationDetails({ conversation, title, me, onClose, onOpenMe
   const isAdmin = conversation.isGroup && conversation.myRole === 'admin'
 
   return (
-    <aside
-      aria-label={t.details.open}
-      className={cn('flex min-h-0 flex-col bg-surface', className)}
-    >
+    <aside aria-label={t.details.open} className={cn('flex min-h-0 flex-col bg-surface', className)}>
       <header className="flex h-18 shrink-0 items-center justify-between border-b border-line px-4">
         <h2 className="text-title-3 text-ink">{t.details.open}</h2>
         <IconButton label={t.details.close} onClick={onClose}>
@@ -66,15 +84,27 @@ export function ConversationDetails({ conversation, title, me, onClose, onOpenMe
               group={conversation.isGroup}
               online={peer?.online}
             />
-            <h3 dir="auto" className="mt-2 text-title-3 text-ink">{title}</h3>
+            <h3 dir="auto" className="mt-2 text-title-3 text-ink">
+              {title}
+            </h3>
             <p className="text-body text-ink-muted" dir={peer ? 'ltr' : undefined}>
-              {conversation.isGroup ? t.details.members(fmt.number(conversation.members.length)) : `@${peer?.username ?? ''}`}
+              {conversation.isGroup
+                ? t.details.members(fmt.number(conversation.members.length))
+                : `@${peer?.username ?? ''}`}
             </p>
             {conversation.description && (
-              <p dir="auto" className="mt-1 max-w-full text-body whitespace-pre-wrap text-ink">{conversation.description}</p>
+              <p dir="auto" className="mt-1 max-w-full text-body whitespace-pre-wrap text-ink">
+                {conversation.description}
+              </p>
             )}
             {isAdmin && (
-              <Button variant="secondary" size="sm" className="mt-2" onClick={() => setEditing(true)} icon={<Pencil size={14} strokeWidth={1.75} aria-hidden />}>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="mt-2"
+                onClick={() => setEditing(true)}
+                icon={<Pencil size={14} strokeWidth={1.75} aria-hidden />}
+              >
                 {t.details.editGroup}
               </Button>
             )}
@@ -107,8 +137,9 @@ export function ConversationDetails({ conversation, title, me, onClose, onOpenMe
               variant="ghost"
               className="w-full justify-start text-danger hover:text-danger"
               onClick={() =>
-                void confirm({ message: t.menu.leaveConfirm(title), confirmLabel: t.menu.leave, danger: true })
-                  .then((ok) => ok && onAction('leave'))
+                void confirm({ message: t.menu.leaveConfirm(title), confirmLabel: t.menu.leave, danger: true }).then(
+                  (ok) => ok && onAction('leave'),
+                )
               }
               icon={<LogOut size={18} strokeWidth={1.75} className="rtl:-scale-x-100" aria-hidden />}
             >
@@ -122,6 +153,9 @@ export function ConversationDetails({ conversation, title, me, onClose, onOpenMe
 }
 
 /** Admins: a link anyone can use to join the group; a new link stops the old one working. */
+/** How long "Copied" shows after copying the invite link. */
+const COPIED_NOTICE_MS = 2000
+
 function InviteLink({ conversation }: { conversation: Conversation }) {
   const { t } = useLocale()
   const { invite } = useGroupAdmin(conversation.id)
@@ -132,19 +166,37 @@ function InviteLink({ conversation }: { conversation: Conversation }) {
     if (!link) return
     await navigator.clipboard?.writeText(link).catch(() => undefined)
     setCopied(true)
-    window.setTimeout(() => setCopied(false), 2000)
+    window.setTimeout(() => setCopied(false), COPIED_NOTICE_MS)
   }
 
   return (
     <Section title={t.group.invite} hint={t.group.inviteHint}>
       {link ? (
         <div className="flex flex-col gap-2">
-          <p dir="ltr" className="truncate rounded-xl bg-surface-sunken px-3 py-2 text-caption text-ink select-all">{link}</p>
+          <p dir="ltr" className="truncate rounded-xl bg-surface-sunken px-3 py-2 text-caption text-ink select-all">
+            {link}
+          </p>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={copy} icon={copied ? <Check size={14} strokeWidth={2} aria-hidden /> : <Copy size={14} strokeWidth={1.75} aria-hidden />}>
+            <Button
+              size="sm"
+              onClick={copy}
+              icon={
+                copied ? (
+                  <Check size={14} strokeWidth={2} aria-hidden />
+                ) : (
+                  <Copy size={14} strokeWidth={1.75} aria-hidden />
+                )
+              }
+            >
               {copied ? t.group.copied : t.group.copyLink}
             </Button>
-            <Button size="sm" variant="secondary" disabled={invite.isPending} onClick={() => invite.mutate(true)} icon={<RefreshCw size={14} strokeWidth={1.75} aria-hidden />}>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={invite.isPending}
+              onClick={() => invite.mutate(true)}
+              icon={<RefreshCw size={14} strokeWidth={1.75} aria-hidden />}
+            >
               {t.group.resetLink}
             </Button>
             <Button size="sm" variant="ghost" disabled={invite.isPending} onClick={() => invite.mutate(false)}>
@@ -153,11 +205,21 @@ function InviteLink({ conversation }: { conversation: Conversation }) {
           </div>
         </div>
       ) : (
-        <Button size="sm" variant="secondary" disabled={invite.isPending} onClick={() => invite.mutate(true)} icon={<Link2 size={14} strokeWidth={1.75} aria-hidden />}>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={invite.isPending}
+          onClick={() => invite.mutate(true)}
+          icon={<Link2 size={14} strokeWidth={1.75} aria-hidden />}
+        >
           {t.group.createInvite}
         </Button>
       )}
-      {invite.error && <p role="alert" dir="auto" className="mt-2 text-caption text-danger">{invite.error.message}</p>}
+      {invite.error && (
+        <p role="alert" dir="auto" className="mt-2 text-caption text-danger">
+          {invite.error.message}
+        </p>
+      )}
     </Section>
   )
 }
@@ -172,7 +234,13 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
   )
 }
 
-function SharedItems({ conversation, onOpenMedia }: { conversation: Conversation; onOpenMedia: (items: Message[], id: string) => void }) {
+function SharedItems({
+  conversation,
+  onOpenMedia,
+}: {
+  conversation: Conversation
+  onOpenMedia: (items: Message[], id: string) => void
+}) {
   const { t, fmt } = useLocale()
   const [tab, setTab] = useState<SharedTab>('media')
   const query = useQuery({
@@ -212,7 +280,9 @@ function SharedItems({ conversation, onOpenMedia }: { conversation: Conversation
 
       <div role="tabpanel" className="mt-3">
         {query.isPending ? (
-          <div className="flex justify-center py-6"><Spinner /></div>
+          <div className="flex justify-center py-6">
+            <Spinner />
+          </div>
         ) : items.length === 0 ? (
           <p className="py-6 text-center text-body text-ink-muted">{t.details.nothingHere}</p>
         ) : tab === 'media' ? (
@@ -227,7 +297,12 @@ function SharedItems({ conversation, onOpenMedia }: { conversation: Conversation
                 {m.kind === 'image' ? (
                   <img src={m.imageUrl} alt="" loading="lazy" className="size-full object-cover" />
                 ) : (
-                  <video src={m.fileUrl ? `${m.fileUrl}#t=0.1` : undefined} muted preload="metadata" className="size-full object-cover" />
+                  <video
+                    src={m.fileUrl ? `${m.fileUrl}#t=0.1` : undefined}
+                    muted
+                    preload="metadata"
+                    className="size-full object-cover"
+                  />
                 )}
                 <span className="sr-only">{fmt.day(m.createdAt)}</span>
               </button>
@@ -246,7 +321,9 @@ function SharedItems({ conversation, onOpenMedia }: { conversation: Conversation
             {items.map((m) => (
               <li key={m.id} className="rounded-xl bg-surface-raised px-3 py-1 ring-1 ring-line">
                 <VoicePlayer message={m} out={false} />
-                <p className="pb-1 text-meta text-ink-subtle">{fmt.day(m.createdAt)} · {fmt.time(m.createdAt)}</p>
+                <p className="pb-1 text-meta text-ink-subtle">
+                  {fmt.day(m.createdAt)} · {fmt.time(m.createdAt)}
+                </p>
               </li>
             ))}
           </ul>
@@ -277,7 +354,7 @@ function SharedItems({ conversation, onOpenMedia }: { conversation: Conversation
 function WallpaperPicker({ conversation }: { conversation: Conversation }) {
   const { t } = useLocale()
   const set = useSetWallpaper()
-  const current = conversation.wallpaper ?? 'default'
+  const current = conversation.wallpaper ?? DEFAULT_WALLPAPER
   return (
     <Section title={t.details.wallpaper} hint={t.details.wallpaperHint}>
       <div role="radiogroup" aria-label={t.details.wallpaper} className="grid grid-cols-3 gap-2">
@@ -295,7 +372,9 @@ function WallpaperPicker({ conversation }: { conversation: Conversation }) {
               current === id && 'ring-2 ring-accent',
             )}
           >
-            <span className="rounded-md bg-surface-raised/85 px-1.5 text-meta font-semibold text-ink">{t.wallpapers[id]}</span>
+            <span className="rounded-md bg-surface-raised/85 px-1.5 text-meta font-semibold text-ink">
+              {t.wallpapers[id]}
+            </span>
             {current === id && (
               <span className="absolute inset-e-1.5 top-1.5 inline-flex size-5 items-center justify-center rounded-full bg-accent text-on-accent">
                 <Check size={12} strokeWidth={3} aria-hidden />
@@ -321,13 +400,26 @@ function GroupEditor({ conversation, onDone }: { conversation: Conversation; onD
   return (
     <section className="flex flex-col gap-4 px-5 pt-6 pb-5">
       <div className="flex flex-col items-center gap-3">
-        <Avatar id={conversation.id} name={name || '?'} src={shown} size="xl" group />
+        <Avatar id={conversation.id} name={name} src={shown} size="xl" group />
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()} icon={<Camera size={14} strokeWidth={1.75} aria-hidden />}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => fileRef.current?.click()}
+            icon={<Camera size={14} strokeWidth={1.75} aria-hidden />}
+          >
             {t.details.changePhoto}
           </Button>
           {shown && (
-            <Button variant="ghost" size="sm" onClick={() => { setPhoto(null); setRemoved(true) }} icon={<Trash2 size={14} strokeWidth={1.75} aria-hidden />}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setPhoto(null)
+                setRemoved(true)
+              }}
+              icon={<Trash2 size={14} strokeWidth={1.75} aria-hidden />}
+            >
               {t.details.removePhoto}
             </Button>
           )}
@@ -346,7 +438,13 @@ function GroupEditor({ conversation, onDone }: { conversation: Conversation; onD
           }}
         />
       </div>
-      <TextField label={t.details.groupName} value={name} onChange={(e) => setName(e.target.value)} maxLength={60} required />
+      <TextField
+        label={t.details.groupName}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        maxLength={60}
+        required
+      />
       <label className="flex flex-col gap-1.5 text-body font-semibold text-ink">
         {t.group.description}
         <textarea
@@ -366,7 +464,9 @@ function GroupEditor({ conversation, onDone }: { conversation: Conversation; onD
         </p>
       )}
       <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={onDone}>{t.details.cancel}</Button>
+        <Button variant="ghost" onClick={onDone}>
+          {t.details.cancel}
+        </Button>
         <Button
           disabled={!name.trim() || update.isPending}
           onClick={() =>
@@ -401,12 +501,22 @@ function Members({ conversation, me, isAdmin }: { conversation: Conversation; me
   return (
     <Section title={t.details.members(fmt.number(conversation.members.length))}>
       {isAdmin && (
-        <Button variant="secondary" size="sm" className="mb-3 w-full" onClick={() => setAdding((v) => !v)} icon={<UserPlus size={16} strokeWidth={1.75} aria-hidden />}>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="mb-3 w-full"
+          onClick={() => setAdding((v) => !v)}
+          icon={<UserPlus size={16} strokeWidth={1.75} aria-hidden />}
+        >
           {t.details.addPeople}
         </Button>
       )}
       {adding && <AddPeople conversation={conversation} me={me} onAdd={(ids) => admin.add.mutate(ids)} />}
-      {error && <p role="alert" className="mb-2 text-caption text-danger" dir="auto">{error.message}</p>}
+      {error && (
+        <p role="alert" className="mb-2 text-caption text-danger" dir="auto">
+          {error.message}
+        </p>
+      )}
 
       <ul className="flex flex-col gap-0.5">
         {members.map((m) => (
@@ -416,7 +526,9 @@ function Members({ conversation, me, isAdmin }: { conversation: Conversation; me
               <span dir="auto" className="block truncate text-body font-semibold text-ink">
                 {m.id === me.id ? t.details.you : m.name}
               </span>
-              <span dir="ltr" className="block truncate text-caption text-ink-muted rtl:text-right">@{m.username}</span>
+              <span dir="ltr" className="block truncate text-caption text-ink-muted rtl:text-right">
+                @{m.username}
+              </span>
             </span>
             {m.role === 'admin' && (
               <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-meta font-bold text-accent">
@@ -444,8 +556,18 @@ function Members({ conversation, me, isAdmin }: { conversation: Conversation; me
           onClose={() => setMenu(null)}
           items={[
             menu.member.role === 'admin'
-              ? { id: 'demote', label: t.details.removeAdmin, icon: <Shield size={18} strokeWidth={1.75} />, onSelect: () => admin.role.mutate({ id: menu.member.id, role: 'member' }) }
-              : { id: 'promote', label: t.details.makeAdmin, icon: <Shield size={18} strokeWidth={1.75} />, onSelect: () => admin.role.mutate({ id: menu.member.id, role: 'admin' }) },
+              ? {
+                  id: 'demote',
+                  label: t.details.removeAdmin,
+                  icon: <Shield size={18} strokeWidth={1.75} />,
+                  onSelect: () => admin.role.mutate({ id: menu.member.id, role: 'member' }),
+                }
+              : {
+                  id: 'promote',
+                  label: t.details.makeAdmin,
+                  icon: <Shield size={18} strokeWidth={1.75} />,
+                  onSelect: () => admin.role.mutate({ id: menu.member.id, role: 'admin' }),
+                },
             {
               id: 'remove',
               label: t.details.removeFromGroup,
@@ -453,8 +575,11 @@ function Members({ conversation, me, isAdmin }: { conversation: Conversation; me
               icon: <UserMinus size={18} strokeWidth={1.75} />,
               onSelect: () => {
                 const member = menu.member
-                void confirm({ message: t.details.removeConfirm(member.name), confirmLabel: t.details.removeFromGroup, danger: true })
-                  .then((ok) => ok && admin.remove.mutate(member.id))
+                void confirm({
+                  message: t.details.removeConfirm(member.name),
+                  confirmLabel: t.details.removeFromGroup,
+                  danger: true,
+                }).then((ok) => ok && admin.remove.mutate(member.id))
               },
             },
           ]}
@@ -464,7 +589,15 @@ function Members({ conversation, me, isAdmin }: { conversation: Conversation; me
   )
 }
 
-function AddPeople({ conversation, me, onAdd }: { conversation: Conversation; me: User; onAdd: (ids: string[]) => void }) {
+function AddPeople({
+  conversation,
+  me,
+  onAdd,
+}: {
+  conversation: Conversation
+  me: User
+  onAdd: (ids: string[]) => void
+}) {
   const { t } = useLocale()
   const [query, setQuery] = useState('')
   const debounced = useDebounced(query)
@@ -490,8 +623,12 @@ function AddPeople({ conversation, me, onAdd }: { conversation: Conversation; me
         {results.map((u) => (
           <li key={u.id} className="flex items-center gap-2 px-1 py-1.5">
             <Avatar id={u.id} name={u.name} src={u.avatarUrl} size="sm" />
-            <span dir="auto" className="min-w-0 flex-1 truncate text-body text-ink">{u.name}</span>
-            <Button size="sm" variant="secondary" onClick={() => onAdd([u.id])}>{t.details.add}</Button>
+            <span dir="auto" className="min-w-0 flex-1 truncate text-body text-ink">
+              {u.name}
+            </span>
+            <Button size="sm" variant="secondary" onClick={() => onAdd([u.id])}>
+              {t.details.add}
+            </Button>
           </li>
         ))}
       </ul>

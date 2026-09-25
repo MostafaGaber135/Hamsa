@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase'
 import type { User } from '@/types/chat'
 
 /** Who may put you in a group: anyone, or only your friends. */
-export type GroupInvites = 'everyone' | 'friends'
+type GroupInvites = 'everyone' | 'friends'
 
 /** The people you blocked. */
 export async function fetchBlocks(): Promise<User[]> {
@@ -32,7 +32,7 @@ export async function setBlocked(userId: string, blocked: boolean) {
 }
 
 /** Who sees when you're online and your "last seen": people you chat with, or nobody. */
-export type PresenceVisibility = 'contacts' | 'nobody'
+type PresenceVisibility = 'contacts' | 'nobody'
 
 export interface PrivacySettings {
   groupInvites: GroupInvites

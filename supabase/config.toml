@@ -414,3 +414,21 @@ enabled = true
 # formatted with uppercase keywords, indent 2, max width 180, trailing commas,
 # and column/key alignment. Set to "null" to emit raw, unformatted SQL.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":180,\"commaStyle\":\"trailing\"}"
+
+# Hamsa's Edge Functions check their own callers (a webhook or cron secret, a signed
+# action token, or the user's token), so the gateway's JWT check is off for all of them.
+# Deploy them all with: npm run functions:deploy
+[functions.send-push]
+verify_jwt = false
+
+[functions.notification-action]
+verify_jwt = false
+
+[functions.link-preview]
+verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = false
+
+[functions.cleanup-storage]
+verify_jwt = false

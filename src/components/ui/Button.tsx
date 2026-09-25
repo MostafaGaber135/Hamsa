@@ -65,7 +65,7 @@ export function IconButton({ label, active, size = 'md', className, children, ..
         'rounded-full',
         size === 'md' ? 'size-10' : 'size-8',
         active
-          ? 'bg-accent-soft text-accent hover:ring-1 hover:ring-inset hover:ring-accent'
+          ? 'bg-accent-soft text-accent hover:ring-1 hover:ring-accent hover:ring-inset'
           : 'text-ink-muted hover:bg-surface-hover hover:text-ink active:bg-surface-pressed',
         className,
       )}

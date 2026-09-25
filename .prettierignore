@@ -1,0 +1,9 @@
+# Generated
+dist/
+src/types/database.generated.ts
+supabase/schema.sql
+package-lock.json
+# Prose and data: formatted by hand
+*.md
+*.sql
+public/

@@ -10,8 +10,10 @@ export type PushStatus =
   | 'off'
   | 'on'
 
-const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true
+const isIOS = () =>
+  /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+const isStandalone = () =>
+  window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true
 
 async function currentSubscription() {
   const registration = await navigator.serviceWorker.ready

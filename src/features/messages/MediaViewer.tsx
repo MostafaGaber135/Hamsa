@@ -22,7 +22,12 @@ interface MediaViewerProps {
 export function MediaViewer({ items, startId, users, onClose }: MediaViewerProps) {
   const { t, fmt, locale, dir } = useLocale()
   const dialogRef = useRef<HTMLDialogElement>(null)
-  const [index, setIndex] = useState(() => Math.max(0, items.findIndex((m) => m.id === startId)))
+  const [index, setIndex] = useState(() =>
+    Math.max(
+      0,
+      items.findIndex((m) => m.id === startId),
+    ),
+  )
   const item = items[index]
   const sender = item ? users[item.senderId] : undefined
 
@@ -45,7 +50,8 @@ export function MediaViewer({ items, startId, users, onClose }: MediaViewerProps
   const isPdf = item.kind === 'file' && mime === 'application/pdf'
   const isImageFile = item.kind === 'file' && mime.startsWith('image/')
 
-  const nav = 'inline-flex size-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white disabled:opacity-30'
+  const nav =
+    'inline-flex size-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white disabled:opacity-30'
 
   return (
     <dialog
@@ -59,15 +65,29 @@ export function MediaViewer({ items, startId, users, onClose }: MediaViewerProps
         <header className="flex shrink-0 items-center gap-3 px-3 py-2 md:px-5">
           {sender && <Avatar id={sender.id} name={sender.name} src={sender.avatarUrl} size="md" />}
           <div className="min-w-0 flex-1">
-            <p dir="auto" className="truncate text-name">{sender?.name}</p>
+            <p dir="auto" className="truncate text-name">
+              {sender?.name}
+            </p>
             <p className="text-caption text-white/70">
               {fmt.day(item.createdAt)} · {fmt.time(item.createdAt)}
             </p>
           </div>
-          <button type="button" onClick={() => saveFile(item)} aria-label={t.rich.download} title={t.rich.download} className={nav}>
+          <button
+            type="button"
+            onClick={() => saveFile(item)}
+            aria-label={t.rich.download}
+            title={t.rich.download}
+            className={nav}
+          >
             <Download size={20} strokeWidth={1.75} aria-hidden />
           </button>
-          <button type="button" onClick={() => dialogRef.current?.close()} aria-label={t.rich.close} title={t.rich.close} className={nav}>
+          <button
+            type="button"
+            onClick={() => dialogRef.current?.close()}
+            aria-label={t.rich.close}
+            title={t.rich.close}
+            className={nav}
+          >
             <X size={22} strokeWidth={1.75} aria-hidden />
           </button>
         </header>
@@ -76,16 +96,30 @@ export function MediaViewer({ items, startId, users, onClose }: MediaViewerProps
           {item.kind === 'image' || isImageFile ? (
             <img key={item.id} src={url} alt="" className="max-h-full max-w-full rounded-lg object-contain" />
           ) : item.kind === 'video' ? (
-            <video key={item.id} src={url} controls autoPlay playsInline className="max-h-full max-w-full rounded-lg bg-black" />
+            <video
+              key={item.id}
+              src={url}
+              controls
+              autoPlay
+              playsInline
+              className="max-h-full max-w-full rounded-lg bg-black"
+            />
           ) : isPdf ? (
-            <iframe key={item.id} src={url} title={item.attachment?.name ?? 'PDF'} className="h-full w-full max-w-5xl rounded-lg bg-white" />
+            <iframe
+              key={item.id}
+              src={url}
+              title={item.attachment?.name ?? t.rich.document}
+              className="h-full w-full max-w-5xl rounded-lg bg-white"
+            />
           ) : (
             <div className="flex flex-col items-center gap-4 text-center">
               <span className="inline-flex size-24 items-center justify-center rounded-3xl bg-white/10">
                 <FileText size={44} strokeWidth={1.5} aria-hidden />
               </span>
               <div>
-                <p dir="auto" className="text-title-3">{item.attachment?.name}</p>
+                <p dir="auto" className="text-title-3">
+                  {item.attachment?.name}
+                </p>
                 <p className="text-body text-white/70">{formatBytes(item.attachment?.size, locale)}</p>
               </div>
               <Button onClick={() => saveFile(item)} icon={<Download size={18} strokeWidth={1.75} aria-hidden />}>
@@ -119,7 +153,9 @@ export function MediaViewer({ items, startId, users, onClose }: MediaViewerProps
         </div>
 
         {item.content && (
-          <p dir="auto" className="mx-auto max-w-2xl shrink-0 px-4 pb-2 text-center text-body text-white/90">{item.content}</p>
+          <p dir="auto" className="mx-auto max-w-2xl shrink-0 px-4 pb-2 text-center text-body text-white/90">
+            {item.content}
+          </p>
         )}
         {items.length > 1 && (
           <p className="shrink-0 pb-3 text-center text-caption text-white/60 tabular-nums">

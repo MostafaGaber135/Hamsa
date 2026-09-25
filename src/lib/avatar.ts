@@ -1,5 +1,5 @@
 const TINTS = ['sand', 'sage', 'rose', 'sky', 'plum'] as const
-export type Tint = (typeof TINTS)[number]
+type Tint = (typeof TINTS)[number]
 
 /** Stable tint per user: the same id always gets the same colour. */
 export function tintFor(id: string): Tint {

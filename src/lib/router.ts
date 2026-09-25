@@ -31,10 +31,14 @@ export function parseRoute(pathname: string): Route {
 
 export function pathFor(route: Route): string {
   switch (route.name) {
-    case 'home': return '/'
-    case 'chat': return `/c/${route.id}`
-    case 'join': return `/join/${route.code}`
-    default: return `/${route.name}`
+    case 'home':
+      return '/'
+    case 'chat':
+      return `/c/${route.id}`
+    case 'join':
+      return `/join/${route.code}`
+    default:
+      return `/${route.name}`
   }
 }
 

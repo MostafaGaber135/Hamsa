@@ -12,6 +12,11 @@ import type { User } from '@/types/chat'
 import { USERNAME_PATTERN, UsernameTakenError, validateImage } from './api'
 import { useAvatar, useChangePassword, useDeleteAccount, useUpdateProfile, useUsernameAvailability } from './queries'
 
+/** Checks the username once you've stopped typing for this long. */
+const USERNAME_CHECK_DELAY_MS = 400
+/** How long "Saved" shows after saving. */
+const SAVED_NOTE_MS = 3000
+
 interface ProfilePageProps {
   user: User
   email?: string
@@ -68,7 +73,9 @@ function PhotoCard({ user }: { user: User }) {
   function handleFile(file: File | undefined) {
     if (!file) return
     const problem = validateImage(file)
-    setLocalError(problem === 'tooBig' ? t.profile.photoTooBig : problem === 'wrongType' ? t.profile.photoWrongType : null)
+    setLocalError(
+      problem === 'tooBig' ? t.profile.photoTooBig : problem === 'wrongType' ? t.profile.photoWrongType : null,
+    )
     if (!problem) upload.mutate({ file, previousUrl: user.avatarUrl })
   }
 
@@ -139,7 +146,7 @@ function DetailsCard({ user, email, saved, onSaved }: DetailsCardProps) {
   const [fullName, setFullName] = useState(user.name)
   const [username, setUsername] = useState(user.username ?? '')
 
-  const debouncedUsername = useDebounced(username, 400)
+  const debouncedUsername = useDebounced(username, USERNAME_CHECK_DELAY_MS)
   const availability = useUsernameAvailability(debouncedUsername, user.username ?? '', user.id)
 
   const changed = fullName.trim() !== user.name || username !== user.username
@@ -183,9 +190,7 @@ function DetailsCard({ user, email, saved, onSaved }: DetailsCardProps) {
           autoComplete="username"
           spellCheck={false}
           hint={usernameHint}
-          error={
-            taken ? t.profile.usernameTaken : username && !validShape ? t.profile.usernameHint : undefined
-          }
+          error={taken ? t.profile.usernameTaken : username && !validShape ? t.profile.usernameHint : undefined}
         />
         <TextField label={t.profile.email} value={email ?? ''} readOnly dir="ltr" hint={t.profile.emailHint} />
 
@@ -357,7 +362,13 @@ function NotificationsCard() {
                 variant={status === 'on' ? 'secondary' : 'primary'}
                 disabled={busy}
                 onClick={toggle}
-                icon={status === 'on' ? <BellOff size={16} strokeWidth={1.75} aria-hidden /> : <Bell size={16} strokeWidth={1.75} aria-hidden />}
+                icon={
+                  status === 'on' ? (
+                    <BellOff size={16} strokeWidth={1.75} aria-hidden />
+                  ) : (
+                    <Bell size={16} strokeWidth={1.75} aria-hidden />
+                  )
+                }
               >
                 {status === 'on' ? t.push.disable : t.push.enable}
               </Button>
@@ -372,7 +383,7 @@ function NotificationsCard() {
 }
 
 /** A "Saved" note that shows for a few seconds each time you call flash(). */
-function useFlash(ms = 3000) {
+function useFlash(ms = SAVED_NOTE_MS) {
   const [visible, setVisible] = useState(false)
   const timer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearTimeout(timer.current), [])

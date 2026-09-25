@@ -28,7 +28,7 @@ export function RichText({ text, usernames }: RichTextProps) {
           href={link}
           target="_blank"
           rel="noopener noreferrer nofollow"
-          className="underline decoration-1 underline-offset-2 break-all hover:decoration-2"
+          className="break-all underline decoration-1 underline-offset-2 hover:decoration-2"
         >
           {link}
         </a>,
@@ -45,5 +45,11 @@ export function RichText({ text, usernames }: RichTextProps) {
     last = index + token.length
   }
   if (last < text.length) parts.push(text.slice(last))
-  return <>{parts.map((part, i) => <Fragment key={i}>{part}</Fragment>)}</>
+  return (
+    <>
+      {parts.map((part, i) => (
+        <Fragment key={i}>{part}</Fragment>
+      ))}
+    </>
+  )
 }

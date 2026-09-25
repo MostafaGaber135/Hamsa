@@ -1,6 +1,9 @@
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
 
+/** Bigger counts show as "99+". */
+const MAX_SHOWN = 99
+
 interface BadgeProps {
   count: number
   muted?: boolean
@@ -13,10 +16,12 @@ interface BadgeProps {
 export function Badge({ count, muted, dot, className }: BadgeProps) {
   const { fmt } = useLocale()
   if (dot) {
-    return <span aria-hidden className={cn('size-2.5 rounded-full', muted ? 'bg-ink-subtle' : 'bg-accent', className)} />
+    return (
+      <span aria-hidden className={cn('size-2.5 rounded-full', muted ? 'bg-ink-subtle' : 'bg-accent', className)} />
+    )
   }
   if (count <= 0) return null
-  const label = count > 99 ? `${fmt.number(99)}+` : fmt.number(count)
+  const label = count > MAX_SHOWN ? `${fmt.number(MAX_SHOWN)}+` : fmt.number(count)
   return (
     <span
       className={cn(

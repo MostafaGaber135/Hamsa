@@ -1,6 +1,7 @@
 import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
+import { formatDuration } from '@/lib/bidi'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
 import type { useCall } from './useCall'
@@ -8,7 +9,17 @@ import type { useCall } from './useCall'
 type Call = ReturnType<typeof useCall>
 
 /** A <video> or <audio> element showing a MediaStream (it can't be set as an attribute). */
-function StreamView({ stream, video, muted, className }: { stream: MediaStream | null; video: boolean; muted?: boolean; className?: string }) {
+function StreamView({
+  stream,
+  video,
+  muted,
+  className,
+}: {
+  stream: MediaStream | null
+  video: boolean
+  muted?: boolean
+  className?: string
+}) {
   const ref = useRef<HTMLVideoElement & HTMLAudioElement>(null)
   useEffect(() => {
     if (ref.current) ref.current.srcObject = stream
@@ -20,19 +31,25 @@ function StreamView({ stream, video, muted, className }: { stream: MediaStream |
   )
 }
 
-function useElapsed(startedAt: number | undefined) {
+/** The call timer ticks once a second. */
+const TICK_MS = 1000
+
+function useElapsed(startedAt: number | undefined, locale: string) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (!startedAt) return
-    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    const timer = window.setInterval(() => setNow(Date.now()), TICK_MS)
     return () => window.clearInterval(timer)
   }, [startedAt])
-  if (!startedAt) return null
-  const seconds = Math.max(0, Math.floor((now - startedAt) / 1000))
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+  return startedAt ? formatDuration(now - startedAt, locale) : null
 }
 
-function RoundButton({ label, onClick, tone = 'neutral', children }: {
+function RoundButton({
+  label,
+  onClick,
+  tone = 'neutral',
+  children,
+}: {
   label: string
   onClick: () => void
   tone?: 'neutral' | 'danger' | 'accept' | 'active'
@@ -59,9 +76,9 @@ function RoundButton({ label, onClick, tone = 'neutral', children }: {
 
 /** Full-screen while a call rings or runs; a small notice when it ends. */
 export function CallOverlay({ call }: { call: Call }) {
-  const { t } = useLocale()
+  const { t, locale } = useLocale()
   const { state } = call
-  const elapsed = useElapsed(state.phase === 'active' ? state.startedAt : undefined)
+  const elapsed = useElapsed(state.phase === 'active' ? state.startedAt : undefined, locale)
 
   if (state.phase === 'idle') return null
 
@@ -75,7 +92,10 @@ export function CallOverlay({ call }: { call: Call }) {
       needsDevices: t.call.needsDevices,
     }
     return (
-      <p role="status" className="fixed inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] z-60 mx-auto w-fit max-w-md rounded-2xl bg-ink px-4 py-2.5 text-body text-canvas shadow-lg">
+      <p
+        role="status"
+        className="fixed inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] z-60 mx-auto w-fit max-w-md rounded-2xl bg-ink px-4 py-2.5 text-body text-canvas shadow-lg"
+      >
         {reasons[state.reason]}
       </p>
     )
@@ -84,22 +104,41 @@ export function CallOverlay({ call }: { call: Call }) {
   const { peer, video } = state
   const showVideo = video && (state.phase === 'connecting' || state.phase === 'active')
   const status =
-    state.phase === 'incoming' ? (video ? t.call.incomingVideo(peer.name) : t.call.incoming(peer.name))
-      : state.phase === 'outgoing' ? t.call.calling
-        : state.phase === 'connecting' ? t.call.connecting
+    state.phase === 'incoming'
+      ? video
+        ? t.call.incomingVideo(peer.name)
+        : t.call.incoming(peer.name)
+      : state.phase === 'outgoing'
+        ? t.call.calling
+        : state.phase === 'connecting'
+          ? t.call.connecting
           : elapsed
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={status ?? peer.name} className="fixed inset-0 z-60 flex flex-col bg-black text-white">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={status ?? peer.name}
+      className="fixed inset-0 z-60 flex flex-col bg-black text-white"
+    >
       {showVideo && <StreamView stream={call.remoteStream} video className="absolute inset-0 size-full object-cover" />}
       {/* Voice calls still need the other person's audio playing. */}
       {!showVideo && <StreamView stream={call.remoteStream} video={false} />}
 
-      <div className={cn('relative flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center', showVideo && 'justify-start')}>
+      <div
+        className={cn(
+          'relative flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center',
+          showVideo && 'justify-start',
+        )}
+      >
         {!showVideo && <Avatar id={peer.id} name={peer.name} src={peer.avatarUrl} size="xl" className="scale-150" />}
         <div className={cn(!showVideo && 'mt-8', showVideo && 'rounded-2xl bg-black/40 px-3 py-1.5')}>
-          <p dir="auto" className="text-title-2">{peer.name}</p>
-          <p role="status" className="text-body text-white/75 tabular-nums">{status}</p>
+          <p dir="auto" className="text-title-2">
+            {peer.name}
+          </p>
+          <p role="status" className="text-body text-white/75 tabular-nums">
+            {status}
+          </p>
         </div>
       </div>
 
@@ -108,7 +147,7 @@ export function CallOverlay({ call }: { call: Call }) {
           stream={call.localStream}
           video
           muted
-          className="absolute end-4 top-4 h-40 w-28 rounded-2xl object-cover shadow-lg ring-2 ring-white/40 sm:h-48 sm:w-36"
+          className="absolute inset-e-4 top-4 h-40 w-28 rounded-2xl object-cover shadow-lg ring-2 ring-white/40 sm:h-48 sm:w-36"
         />
       )}
 
@@ -124,11 +163,19 @@ export function CallOverlay({ call }: { call: Call }) {
           </>
         ) : (
           <>
-            <RoundButton label={call.muted ? t.call.unmute : t.call.mute} tone={call.muted ? 'active' : 'neutral'} onClick={call.toggleMute}>
+            <RoundButton
+              label={call.muted ? t.call.unmute : t.call.mute}
+              tone={call.muted ? 'active' : 'neutral'}
+              onClick={call.toggleMute}
+            >
               {call.muted ? <MicOff size={22} strokeWidth={2} /> : <Mic size={22} strokeWidth={2} />}
             </RoundButton>
             {video && (
-              <RoundButton label={call.cameraOff ? t.call.cameraOn : t.call.cameraOff} tone={call.cameraOff ? 'active' : 'neutral'} onClick={call.toggleCamera}>
+              <RoundButton
+                label={call.cameraOff ? t.call.cameraOn : t.call.cameraOff}
+                tone={call.cameraOff ? 'active' : 'neutral'}
+                onClick={call.toggleCamera}
+              >
                 {call.cameraOff ? <VideoOff size={22} strokeWidth={2} /> : <Video size={22} strokeWidth={2} />}
               </RoundButton>
             )}

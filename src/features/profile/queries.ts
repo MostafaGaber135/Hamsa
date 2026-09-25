@@ -2,7 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { conversationKeys } from '@/features/conversations/queries'
 import { friendKeys } from '@/features/friends/queries'
 import {
-  USERNAME_PATTERN, changePassword, deleteAccount, isUsernameAvailable, removeAvatar, updateProfile, uploadAvatar,
+  USERNAME_PATTERN,
+  changePassword,
+  deleteAccount,
+  isUsernameAvailable,
+  removeAvatar,
+  updateProfile,
+  uploadAvatar,
 } from './api'
 
 /** Your name and photo also appear in conversations and friend lists, so refresh those too. */

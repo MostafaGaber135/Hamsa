@@ -16,8 +16,18 @@ export type RunPosition = 'single' | 'first' | 'middle' | 'last'
 // Hamsa's "tail": the last bubble of a run squares its bottom corner on the sender's side.
 // Logical corners (s = start, e = end) mirror automatically in RTL.
 const corners = {
-  in: { single: 'rounded-es-sm', first: 'rounded-es-sm', middle: 'rounded-ss-sm rounded-es-sm', last: 'rounded-ss-sm rounded-es-sm' },
-  out: { single: 'rounded-ee-sm', first: 'rounded-ee-sm', middle: 'rounded-se-sm rounded-ee-sm', last: 'rounded-se-sm rounded-ee-sm' },
+  in: {
+    single: 'rounded-es-sm',
+    first: 'rounded-es-sm',
+    middle: 'rounded-ss-sm rounded-es-sm',
+    last: 'rounded-ss-sm rounded-es-sm',
+  },
+  out: {
+    single: 'rounded-ee-sm',
+    first: 'rounded-ee-sm',
+    middle: 'rounded-se-sm rounded-ee-sm',
+    last: 'rounded-se-sm rounded-ee-sm',
+  },
 } as const
 
 /** Holding a message this long on a touch screen opens its menu. */
@@ -65,14 +75,18 @@ export function MessageBubble({ message, direction, position, onRetry, onOpen }:
         'inline-flex items-center gap-1 text-meta whitespace-nowrap tabular-nums',
         floatingMeta || stickerMeta
           ? 'rounded-full bg-black/55 px-2 py-0.5 text-white'
-          : out ? 'text-bubble-out-meta' : 'text-ink-subtle',
+          : out
+            ? 'text-bubble-out-meta'
+            : 'text-ink-subtle',
       )}
     >
       {message.pinnedAt && <Pin size={11} strokeWidth={2.25} aria-hidden />}
       {savedIds.has(message.id) && <Star size={11} strokeWidth={2.25} aria-label={t.msg.saved} />}
       {message.editedAt && !deleted && <span>{t.msg.edited}</span>}
       <time dateTime={message.createdAt}>{fmt.time(message.createdAt)}</time>
-      {status && <MessageStatusIcon status={status} className={floatingMeta || stickerMeta ? 'text-white' : undefined} />}
+      {status && (
+        <MessageStatusIcon status={status} className={floatingMeta || stickerMeta ? 'text-white' : undefined} />
+      )}
     </span>
   )
 
@@ -168,7 +182,10 @@ export function MessageBubble({ message, direction, position, onRetry, onOpen }:
                 >
                   <RichText text={caption} usernames={usernames} />
                   {/* Invisible spacer so the last line leaves room for the time (and "edited"). */}
-                  <span aria-hidden className={cn('inline-block', message.editedAt ? (out ? 'w-32' : 'w-26') : out ? 'w-20' : 'w-14')} />
+                  <span
+                    aria-hidden
+                    className={cn('inline-block', message.editedAt ? (out ? 'w-32' : 'w-26') : out ? 'w-20' : 'w-14')}
+                  />
                 </p>
               )}
 
@@ -184,7 +201,10 @@ export function MessageBubble({ message, direction, position, onRetry, onOpen }:
                     aria-valuenow={percent}
                     className="h-1 flex-1 overflow-hidden rounded-full bg-black/10"
                   >
-                    <span className="block h-full rounded-full bg-accent transition-[width] duration-200" style={{ width: `${percent}%` }} />
+                    <span
+                      className="block h-full rounded-full bg-accent transition-[width] duration-200"
+                      style={{ width: `${percent}%` }}
+                    />
                   </span>
                   <button
                     type="button"

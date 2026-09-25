@@ -38,7 +38,18 @@ type Panel = 'menu' | 'closing' | 'react' | 'info' | 'report'
 
 /** Everything you can do with one message, offered only when it's allowed. */
 export function MessageMenu({
-  state, conversation, currentUserId, users, saved, onClose, onReply, onEdit, onDelete, onReact, onPin, onSave,
+  state,
+  conversation,
+  currentUserId,
+  users,
+  saved,
+  onClose,
+  onReply,
+  onEdit,
+  onDelete,
+  onReact,
+  onPin,
+  onSave,
 }: MessageMenuProps) {
   const { t } = useLocale()
   const confirm = useConfirm()
@@ -60,11 +71,21 @@ export function MessageMenu({
   const icon = { size: 18, strokeWidth: 1.75 }
 
   const items: MenuItem[] = [
-    { id: 'reply', label: t.msg.reply, icon: <Reply {...icon} className="rtl:-scale-x-100" />, onSelect: () => onReply(message) },
+    {
+      id: 'reply',
+      label: t.msg.reply,
+      icon: <Reply {...icon} className="rtl:-scale-x-100" />,
+      onSelect: () => onReply(message),
+    },
     { id: 'react', label: t.msg.react, icon: <SmilePlus {...icon} />, onSelect: () => openPanel('react') },
   ]
   if (text) {
-    items.push({ id: 'copy', label: t.msg.copy, icon: <Copy {...icon} />, onSelect: () => void navigator.clipboard?.writeText(text) })
+    items.push({
+      id: 'copy',
+      label: t.msg.copy,
+      icon: <Copy {...icon} />,
+      onSelect: () => void navigator.clipboard?.writeText(text),
+    })
   }
   if (own && message.kind === 'text' && age < EDIT_WINDOW_MS) {
     items.push({ id: 'edit', label: t.msg.edit, icon: <Pencil {...icon} />, onSelect: () => onEdit(message) })
@@ -91,34 +112,44 @@ export function MessageMenu({
       danger: true,
       icon: <Trash2 {...icon} />,
       onSelect: () =>
-        void confirm({ message: t.msg.deleteConfirm, confirmLabel: t.msg.delete, danger: true })
-          .then((ok) => ok && onDelete(message)),
+        void confirm({ message: t.msg.deleteConfirm, confirmLabel: t.msg.delete, danger: true }).then(
+          (ok) => ok && onDelete(message),
+        ),
     })
   }
   if (!own) {
-    items.push({ id: 'report', label: t.msg.report, danger: true, icon: <Flag {...icon} />, onSelect: () => openPanel('report') })
+    items.push({
+      id: 'report',
+      label: t.msg.report,
+      danger: true,
+      icon: <Flag {...icon} />,
+      onSelect: () => openPanel('report'),
+    })
   }
 
   if (panel === 'react') {
-    return <ReactionBar anchor={anchor} current={myReaction} onPick={(emoji) => onReact(message, emoji)} onClose={onClose} />
+    return (
+      <ReactionBar anchor={anchor} current={myReaction} onPick={(emoji) => onReact(message, emoji)} onClose={onClose} />
+    )
   }
-  if (panel === 'info') return <ReadByDialog message={message} conversation={conversation} currentUserId={currentUserId} onClose={onClose} />
+  if (panel === 'info')
+    return (
+      <ReadByDialog message={message} conversation={conversation} currentUserId={currentUserId} onClose={onClose} />
+    )
   if (panel === 'report') {
     const sender = users[message.senderId]
     return sender ? <ReportDialog user={sender} messageId={message.id} onClose={onClose} /> : null
   }
-  return (
-    <Menu
-      anchor={anchor}
-      label={t.msg.actions}
-      items={items}
-      onClose={() => setPanel('closing')}
-    />
-  )
+  return <Menu anchor={anchor} label={t.msg.actions} items={items} onClose={() => setPanel('closing')} />
 }
 
 /** Who in a group has read your message: everyone whose read marker passed it. */
-function ReadByDialog({ message, conversation, currentUserId, onClose }: {
+function ReadByDialog({
+  message,
+  conversation,
+  currentUserId,
+  onClose,
+}: {
   message: Message
   conversation: Conversation
   currentUserId: string
@@ -135,7 +166,9 @@ function ReadByDialog({ message, conversation, currentUserId, onClose }: {
       {people.map((m) => (
         <li key={m.id} className="flex items-center gap-3 py-1">
           <Avatar id={m.id} name={m.name} src={m.avatarUrl} size="sm" />
-          <span dir="auto" className="min-w-0 flex-1 truncate text-body">{m.name}</span>
+          <span dir="auto" className="min-w-0 flex-1 truncate text-body">
+            {m.name}
+          </span>
         </li>
       ))}
     </ul>

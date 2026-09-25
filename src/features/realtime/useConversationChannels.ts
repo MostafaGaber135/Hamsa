@@ -54,7 +54,11 @@ export function useConversationChannels(
     const timerKey = `${conversationId}:${typerId}`
     window.clearTimeout(hideTimers.current.get(timerKey))
     // Hide it if their next keystroke event doesn't arrive in time.
-    if (isTyping) hideTimers.current.set(timerKey, window.setTimeout(() => update(false), HIDE_AFTER_MS))
+    if (isTyping)
+      hideTimers.current.set(
+        timerKey,
+        window.setTimeout(() => update(false), HIDE_AFTER_MS),
+      )
     update(isTyping)
   }, [])
 
@@ -140,7 +144,9 @@ export function useConversationChannels(
       const now = Date.now()
       if (now - (lastSent.current.get(conversationId) ?? 0) < SEND_EVERY_MS) return
       lastSent.current.set(conversationId, now)
-      channels.current.get(conversationId)?.send({ type: 'broadcast', event: 'typing', payload: { userId, typing: true } })
+      channels.current
+        .get(conversationId)
+        ?.send({ type: 'broadcast', event: 'typing', payload: { userId, typing: true } })
     },
     [userId],
   )
@@ -149,7 +155,9 @@ export function useConversationChannels(
   const stopTyping = useCallback(
     (conversationId: string) => {
       lastSent.current.delete(conversationId)
-      channels.current.get(conversationId)?.send({ type: 'broadcast', event: 'typing', payload: { userId, typing: false } })
+      channels.current
+        .get(conversationId)
+        ?.send({ type: 'broadcast', event: 'typing', payload: { userId, typing: false } })
     },
     [userId],
   )
