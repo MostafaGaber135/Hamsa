@@ -142,12 +142,13 @@ export function CallOverlay({ call }: { call: Call }) {
         </div>
       </div>
 
+      {/* Your own camera, mirrored like a mirror; the other person sees you the right way round. */}
       {showVideo && call.localStream && (
         <StreamView
           stream={call.localStream}
           video
           muted
-          className="absolute inset-e-4 top-4 h-40 w-28 rounded-2xl object-cover shadow-lg ring-2 ring-white/40 sm:h-48 sm:w-36"
+          className="absolute inset-e-4 top-4 h-40 w-28 -scale-x-100 rounded-2xl object-cover shadow-lg ring-2 ring-white/40 sm:h-48 sm:w-36"
         />
       )}
 
