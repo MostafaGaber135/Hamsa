@@ -12,6 +12,8 @@ import {
 } from '@/features/conversations/queries'
 import { Sidebar, type Filter } from '@/features/conversations/Sidebar'
 import { useFriendships } from '@/features/friends/queries'
+import type { AppNotification } from '@/features/notifications/api'
+import { useUnreadNotifications } from '@/features/notifications/queries'
 import { setAppBadge } from '@/lib/appBadge'
 import { cn } from '@/lib/cn'
 import { useLocale } from '@/lib/i18n'
@@ -39,6 +41,9 @@ const ProfilePage = lazy(() => import('@/features/profile/ProfilePage').then((m)
 const MediaViewer = lazy(() => import('@/features/messages/MediaViewer').then((m) => ({ default: m.MediaViewer })))
 const SharePage = lazy(() => import('@/features/share/SharePage').then((m) => ({ default: m.SharePage })))
 const JoinPage = lazy(() => import('@/features/conversations/JoinPage').then((m) => ({ default: m.JoinPage })))
+const NotificationsDialog = lazy(() =>
+  import('@/features/notifications/NotificationsDialog').then((m) => ({ default: m.NotificationsDialog })),
+)
 
 interface ChatAppProps {
   userId: string
@@ -59,6 +64,8 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [newChatOpen, setNewChatOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const unreadNotifications = useUnreadNotifications().data ?? 0
   const [viewer, setViewer] = useState<{ items: Message[]; startId: string } | null>(null)
   const friendships = useFriendships()
   const friendRequests = (friendships.data ?? []).filter((f) => f.status === 'incoming').length
@@ -95,6 +102,13 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
   })
 
   const conversationAction = useConversationAction()
+
+  /** A notification leads to what it's about: the friends page, the group, or the message itself. */
+  function openNotification(n: AppNotification) {
+    if (n.kind === 'friend_request' || n.kind === 'friend_accepted') navigate({ name: 'friends' })
+    else if (n.conversationId && n.messageId) nav.openMessage(n.conversationId, n.messageId)
+    else if (n.conversationId) openConversation(n.conversationId)
+  }
 
   function handleConversationAction(id: string, action: ConversationAction) {
     // Close the chat if it's going away, or if you just marked it unread
@@ -166,6 +180,8 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
         onOpenProfile={() => (view === 'profile' ? goBack() : navigate({ name: 'profile' }))}
         profileActive={view === 'profile'}
         friendRequests={friendRequests}
+        unreadNotifications={unreadNotifications}
+        onOpenNotifications={() => setNotificationsOpen(true)}
         messageResults={messageResults}
         searchingMessages={searchingMessages}
         onOpenMessage={nav.openMessage}
@@ -235,6 +251,10 @@ export function ChatApp({ userId, email, hasPassword, theme, onToggleTheme }: Ch
         )}
         {viewer && (
           <MediaViewer items={viewer.items} startId={viewer.startId} users={users} onClose={() => setViewer(null)} />
+        )}
+
+        {notificationsOpen && (
+          <NotificationsDialog onClose={() => setNotificationsOpen(false)} onOpen={openNotification} />
         )}
 
         {/* Mounted only while open, so its code loads the first time you start a chat. */}

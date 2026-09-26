@@ -9,6 +9,11 @@ test('friends through an invite link, then a message arrives live and the reply 
 
   await becomeFriends(alice, bob)
 
+  // Alice's bell tells her Bob accepted.
+  await alice.getByRole('button', { name: 'Notifications' }).click()
+  await expect(alice.getByRole('dialog').getByText(`${bobName} accepted your friend request`)).toBeVisible()
+  await alice.getByRole('button', { name: 'Close notifications' }).click()
+
   // Friends now: Alice starts a chat with Bob and writes.
   await startChat(alice, bobName, 'Hello from Alice')
 

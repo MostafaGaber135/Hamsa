@@ -1,7 +1,10 @@
 import type { Strings } from '@/lib/i18n'
 import type { Message } from '@/types/chat'
-/** One line describing the last message, for the conversation list. */
-export function messagePreview(m: Message | undefined, t: Strings): string {
+/** The parts of a message a one-line preview needs. */
+export type PreviewableMessage = Pick<Message, 'kind' | 'content' | 'deletedAt' | 'attachment'>
+
+/** One line describing a message, for the conversation list and notifications. */
+export function messagePreview(m: PreviewableMessage | undefined, t: Strings): string {
   if (!m) return ''
   if (m.deletedAt) return t.msg.deleted
   switch (m.kind) {

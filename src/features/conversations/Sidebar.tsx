@@ -1,4 +1,4 @@
-import { Languages, LogOut, Moon, Search, SquarePen, Sun, Users } from 'lucide-react'
+import { Bell, Languages, LogOut, Moon, Search, SquarePen, Sun, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
@@ -35,6 +35,9 @@ interface SidebarProps {
   profileActive: boolean
   /** Friend requests waiting for an answer. */
   friendRequests: number
+  /** Notifications you haven't seen. */
+  unreadNotifications: number
+  onOpenNotifications: () => void
   /** Shown instead of the list while loading, on error, or when there are no conversations. */
   listPlaceholder?: ReactNode
   className?: string
@@ -215,6 +218,17 @@ export function Sidebar(props: SidebarProps) {
             )}
           </span>
         </button>
+        <span className="relative">
+          <IconButton label={t.notifications.open} onClick={props.onOpenNotifications}>
+            <Bell size={18} strokeWidth={1.75} />
+          </IconButton>
+          {props.unreadNotifications > 0 && (
+            <Badge
+              count={props.unreadNotifications}
+              className="pointer-events-none absolute -inset-e-1 -top-1 ring-2 ring-surface"
+            />
+          )}
+        </span>
         <IconButton label={theme === 'dark' ? t.themeToLight : t.themeToDark} onClick={props.onToggleTheme}>
           {theme === 'dark' ? <Sun size={18} strokeWidth={1.75} /> : <Moon size={18} strokeWidth={1.75} />}
         </IconButton>

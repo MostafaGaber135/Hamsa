@@ -59,14 +59,33 @@ interface PushData {
   icon?: string
   tag?: string
   conversationId?: string
+  /** Where a tap leads when it isn't a chat, e.g. "/friends". */
+  path?: string
+  /** A bell event (friend request, reaction…), worded here in the device's language. */
+  event?: { kind: string; actor: string; group: string | null; emoji: string | null }
   /** Lets "Mark as read" work without opening the app (see the notification-action function). */
   action?: { url: string; token: string }
 }
 
-const labels = () =>
-  self.navigator.language.startsWith('ar')
-    ? { reply: 'رد', read: 'تعليم كمقروءة' }
-    : { reply: 'Reply', read: 'Mark as read' }
+const isArabic = () => self.navigator.language.startsWith('ar')
+const labels = () => (isArabic() ? { reply: 'رد', read: 'تعليم كمقروءة' } : { reply: 'Reply', read: 'Mark as read' })
+
+/** The bell's wording, as in the app (src/lib/i18n): "Sara reacted ❤️ to your message". */
+function eventText({ kind, actor, group, emoji }: NonNullable<PushData['event']>): string | undefined {
+  const ar = isArabic()
+  switch (kind) {
+    case 'friend_request':
+      return ar ? `أرسل ${actor} لك طلب صداقة` : `${actor} sent you a friend request`
+    case 'friend_accepted':
+      return ar ? `قبل ${actor} طلب صداقتك` : `${actor} accepted your friend request`
+    case 'added_to_group':
+      return ar ? `أضافك ${actor} إلى ${group}` : `${actor} added you to ${group}`
+    case 'made_admin':
+      return ar ? `جعلك ${actor} مشرفًا في ${group}` : `${actor} made you an admin of ${group}`
+    case 'reaction':
+      return ar ? `تفاعل ${actor} بـ ${emoji} مع رسالتك` : `${actor} reacted ${emoji} to your message`
+  }
+}
 
 self.addEventListener('push', (event) => {
   const data: PushData = event.data ? event.data.json() : {}
@@ -79,7 +98,7 @@ self.addEventListener('push', (event) => {
 
       const text = labels()
       await self.registration.showNotification(data.title || APP_NAME, {
-        body: data.body || '',
+        body: (data.event && eventText(data.event)) || data.body || '',
         icon: data.icon || APP_ICON,
         badge: BADGE_ICON,
         tag: data.tag,
@@ -87,10 +106,10 @@ self.addEventListener('push', (event) => {
         ...{ renotify: Boolean(data.tag) },
         dir: 'auto',
         data,
-        actions: [
-          { action: 'reply', title: text.reply },
-          ...(data.action ? [{ action: 'read', title: text.read }] : []),
-        ],
+        // Reply and Mark as read are for messages; a bell event just opens.
+        actions: data.event
+          ? []
+          : [{ action: 'reply', title: text.reply }, ...(data.action ? [{ action: 'read', title: text.read }] : [])],
       } as NotificationOptions)
       // A dot on the app icon until Hamsa is opened (the app then shows the real count).
       await self.navigator.setAppBadge?.().catch(() => undefined)
@@ -113,18 +132,19 @@ self.addEventListener('notificationclick', (event) => {
     return
   }
 
-  // "Reply" or a tap on the notification: open that chat, reusing an open Hamsa tab.
+  // "Reply" or a tap on the notification: open that chat (or page), reusing an open Hamsa tab.
   const conversationId = data.conversationId
+  const path = conversationId ? `/c/${conversationId}` : (data.path ?? '/')
   event.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
       for (const w of windows) {
         if ('focus' in w) {
-          w.postMessage({ type: 'open-conversation', conversationId })
+          w.postMessage(conversationId ? { type: 'open-conversation', conversationId } : { type: 'open-path', path })
           return w.focus()
         }
       }
-      return self.clients.openWindow(conversationId ? `/c/${conversationId}` : '/')
+      return self.clients.openWindow(path)
     })(),
   )
 })

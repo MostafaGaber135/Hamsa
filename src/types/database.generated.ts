@@ -331,6 +331,71 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          actor_id: string
+          conversation_id: string | null
+          created_at: string
+          emoji: string | null
+          id: string
+          kind: string
+          message_id: string | null
+          read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          actor_id: string
+          conversation_id?: string | null
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          kind: string
+          message_id?: string | null
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          actor_id?: string
+          conversation_id?: string | null
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          kind?: string
+          message_id?: string | null
+          read_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -574,6 +639,26 @@ export type Database = {
           username: string
         }[]
       }
+      get_my_notifications: {
+        Args: never
+        Returns: {
+          actor_avatar: string
+          actor_id: string
+          actor_name: string
+          actor_username: string
+          conversation_id: string
+          created_at: string
+          emoji: string
+          group_name: string
+          id: string
+          kind: string
+          message_deleted: boolean
+          message_id: string
+          message_kind: string
+          message_text: string
+          read_at: string
+        }[]
+      }
       get_or_create_direct_conversation: {
         Args: { other_user_id: string }
         Returns: string
@@ -603,6 +688,18 @@ export type Database = {
       mark_conversation_read: { Args: { conv_id: string }; Returns: undefined }
       mark_conversation_unread: {
         Args: { conv_id: string }
+        Returns: undefined
+      }
+      mark_notifications_read: { Args: never; Returns: undefined }
+      notify: {
+        Args: {
+          actor: string
+          conv_id?: string
+          msg_id?: string
+          reaction?: string
+          recipient: string
+          what: string
+        }
         Returns: undefined
       }
       orphaned_files: {

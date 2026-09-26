@@ -61,6 +61,9 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 **Presence**
 - Online status and "last seen", visible only to people you chat with — or to nobody, if you choose
 - Push notifications for new messages, even when Hamsa is closed (Web Push, installable as an app)
+- A notifications bell: friend requests (accept or decline right there), accepted requests, being added to a group
+  or made an admin, reactions to your messages, mentions and replies, live, with who did it and a preview; a tap
+  opens the chat or the message. The same events arrive as push notifications, in your device's language
 - "Sara is typing…" in the chat, the header and the conversation list
 
 **People**
@@ -291,6 +294,8 @@ naming it. Run it again after adding a secret or changing a function.
    `VAPID_SUBJECT` (`mailto:you@example.com`) and `WEBHOOK_SECRET` (any long random string).
 5. **Database → Webhooks → Create**: table `messages`, event *Insert*, type *Supabase Edge Functions*,
    function `send-push`, and an HTTP header `x-webhook-secret` with the same secret.
+   Create a **second webhook** the same way on table `notifications` (event *Insert*, same function and header):
+   it sends friend requests, group invitations and reactions as push notifications too.
 6. In Hamsa: **My profile → Notifications → Turn on**. On iPhone, first *Share → Add to Home Screen*.
 7. Optional, the **Mark as read** button on notifications: add an `ACTION_SECRET` secret (any long random
    string). `send-push` picks it up on its next start; `notification-action` needs it to work.
