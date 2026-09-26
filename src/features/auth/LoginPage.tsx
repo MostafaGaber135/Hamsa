@@ -94,7 +94,7 @@ export function LoginPage({ theme, onToggleTheme }: LoginPageProps) {
     run(async () => {
       const { error } =
         mode === 'reset'
-          ? await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+          ? await supabase.auth.resetPasswordForEmail(email)
           : await supabase.auth.resend({ type: 'signup', email })
       fail(error)
       setInfo(t.authFlow.resent)
@@ -102,7 +102,7 @@ export function LoginPage({ theme, onToggleTheme }: LoginPageProps) {
 
   const sendResetCode = () =>
     run(async () => {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+      const { error } = await supabase.auth.resetPasswordForEmail(email)
       fail(error)
       go('reset')
     })

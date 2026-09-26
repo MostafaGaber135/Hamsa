@@ -9,8 +9,6 @@ import { supabase } from '@/lib/supabase'
 export function useSession() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  // True after opening the password-reset link from the email.
-  const [recovering, setRecovering] = useState(false)
 
   useEffect(() => {
     // Never show one person's cached chats to the next person on this browser,
@@ -30,7 +28,6 @@ export function useSession() {
 
     const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
       adopt(newSession)
-      if (event === 'PASSWORD_RECOVERY') setRecovering(true)
       if (event === 'SIGNED_OUT') {
         queryClient.clear()
         clearPersistedCache()
@@ -40,5 +37,5 @@ export function useSession() {
     return () => data.subscription.unsubscribe()
   }, [])
 
-  return { session, loading, recovering, doneRecovering: () => setRecovering(false) }
+  return { session, loading }
 }

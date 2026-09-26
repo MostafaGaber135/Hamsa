@@ -10,9 +10,6 @@ import { useTheme } from '@/lib/theme'
 
 // Each screen is its own download: signing in doesn't load the chat app, and the other way round.
 const LoginPage = lazy(() => import('@/features/auth/LoginPage').then((m) => ({ default: m.LoginPage })))
-const SetNewPasswordPage = lazy(() =>
-  import('@/features/auth/SetNewPasswordPage').then((m) => ({ default: m.SetNewPasswordPage })),
-)
 const ChatApp = lazy(() => import('@/features/chat/ChatApp').then((m) => ({ default: m.ChatApp })))
 const PrivacyPage = lazy(() => import('@/features/legal/PrivacyPage').then((m) => ({ default: m.PrivacyPage })))
 const LandingPage = lazy(() => import('@/features/landing/LandingPage').then((m) => ({ default: m.LandingPage })))
@@ -41,7 +38,7 @@ function Splash() {
 
 function Screen() {
   const { theme, toggleTheme } = useTheme()
-  const { session, loading, recovering, doneRecovering } = useSession()
+  const { session, loading } = useSession()
   const route = useRoute()
   const signedIn = Boolean(session)
 
@@ -60,9 +57,6 @@ function Screen() {
     if (route.name === 'home') return <LandingPage theme={theme} onToggleTheme={toggleTheme} />
     return <LoginPage theme={theme} onToggleTheme={toggleTheme} />
   }
-
-  // Arrived from the "reset password" email link: choose a new password first.
-  if (recovering) return <SetNewPasswordPage onDone={doneRecovering} />
 
   // key: a different account gets a completely fresh app state.
   return (

@@ -1,49 +1,16 @@
-import { expect, test, type Browser } from '@playwright/test'
-
-// Unique people per run, so the test works on a database that isn't empty.
-const run = Date.now().toString(36)
-
-async function signUp(browser: Browser, name: string) {
-  const page = await (await browser.newContext()).newPage()
-  await page.goto('/login')
-  await page.getByRole('button', { name: 'Create one' }).click()
-  await page.getByLabel('Full name').fill(name)
-  await page.getByLabel('Email').fill(`${name.split(' ')[0].toLowerCase()}.${run}@example.com`)
-  await page.getByLabel('Password', { exact: true }).fill('quiet-room-42')
-  await page.getByRole('button', { name: 'Create account' }).click()
-  // Signed in: the chat list is on screen.
-  await expect(page.getByRole('button', { name: 'New chat' }).first()).toBeVisible()
-  return page
-}
+import { expect, test } from '@playwright/test'
+import { becomeFriends, personName, signUp, startChat } from './people'
 
 test('friends through an invite link, then a message arrives live and the reply comes back', async ({ browser }) => {
-  const aliceName = `Alice ${run}`
-  const bobName = `Bob ${run}`
+  const aliceName = personName('Alice')
+  const bobName = personName('Bob')
   const alice = await signUp(browser, aliceName)
   const bob = await signUp(browser, bobName)
 
-  // Bob copies his invite link from the friends page.
-  await bob.getByRole('button', { name: 'Friends' }).first().click()
-  await bob.getByRole('tab', { name: 'Find people' }).click()
-  const inviteLink = (await bob.getByText(/\/add\/[a-z0-9_]+$/).textContent()) ?? ''
-
-  // Alice opens it and sends him a request; Bob accepts.
-  await alice.goto(new URL(inviteLink).pathname)
-  await alice.getByRole('button', { name: 'Add friend' }).click()
-  await bob.getByRole('tab', { name: /Requests/ }).click()
-  await bob.getByRole('button', { name: 'Accept' }).click()
+  await becomeFriends(alice, bob)
 
   // Friends now: Alice starts a chat with Bob and writes.
-  await alice.getByRole('button', { name: 'New chat' }).first().click()
-  await alice.getByLabel('Search your friends').fill(bobName)
-  await alice
-    .getByRole('dialog')
-    .getByRole('button', { name: new RegExp(bobName) })
-    .click()
-  await alice.getByRole('button', { name: 'Start chat' }).click()
-  const aliceBox = alice.getByRole('textbox', { name: `Message ${bobName}` })
-  await aliceBox.fill('Hello from Alice')
-  await aliceBox.press('Enter')
+  await startChat(alice, bobName, 'Hello from Alice')
 
   // It arrives in Bob's chat list, live.
   await bob.getByRole('option', { name: new RegExp(aliceName) }).click()
