@@ -17,6 +17,8 @@ A real-time chat app: React 19 + TypeScript + Vite + Tailwind v4 + TanStack Quer
 - Friends only: new one-to-one chats and group members must be friends (enforced in SQL). Profiles are readable
   only by people connected to them; finding people goes through `search_people` (3+ characters, start of a
   username), `people_you_may_know`, or an invite link `/add/<username>`. Never add a query that lists profiles.
+- Notifications (the bell) are rows in `notifications`, created only by SQL triggers through `public.notify()`
+  (never by the app); a new kind needs the check constraint, a trigger, `describe.ts`, i18n, and `send-push`.
 - Edge Functions share `supabase/functions/_shared/` (`requireEnv`, `admin`, `cors`, action tokens) and are
   deployed with `npm run functions:deploy`.
 

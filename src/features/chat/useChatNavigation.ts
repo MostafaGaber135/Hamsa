@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { JumpTarget } from '@/features/messages/MessageThread'
-import { navigate, useRoute } from '@/lib/router'
+import { navigate, parseRoute, useRoute } from '@/lib/router'
 
 type ChatView = 'chat' | 'friends' | 'profile' | 'share' | 'join'
 
@@ -47,6 +47,8 @@ export function useChatNavigation() {
       if (e.data?.type === 'open-conversation' && typeof e.data.conversationId === 'string') {
         navigate({ name: 'chat', id: e.data.conversationId })
       }
+      // A bell event that isn't about a chat, e.g. a friend request: /friends.
+      if (e.data?.type === 'open-path' && typeof e.data.path === 'string') navigate(parseRoute(e.data.path))
     }
     navigator.serviceWorker?.addEventListener('message', onMessage)
     return () => navigator.serviceWorker?.removeEventListener('message', onMessage)

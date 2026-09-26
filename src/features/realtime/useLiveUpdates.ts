@@ -5,6 +5,7 @@ import { conversationKeys } from '@/features/conversations/queries'
 import { friendKeys } from '@/features/friends/queries'
 import { withMediaUrls } from '@/features/messages/api'
 import { applyMessageUpdate, applyReaction, bumpConversation, upsertMessage } from '@/features/messages/queries'
+import { notificationKeys } from '@/features/notifications/queries'
 import { supabase } from '@/lib/supabase'
 import type { Conversation } from '@/types/chat'
 
@@ -108,6 +109,8 @@ export function useLiveUpdates({ userId, openConversationId, onReadWhileOpen }: 
       // Added to or removed from a chat, a new chat, a group renamed or given a new photo, roles.
       .on('broadcast', { event: 'conversations' }, () => qc.invalidateQueries({ queryKey: conversationKeys.all }))
       .on('broadcast', { event: 'friends' }, () => qc.invalidateQueries({ queryKey: friendKeys.all }))
+      // A friend request, a reaction to your message, a mention…: the bell refreshes.
+      .on('broadcast', { event: 'notification' }, () => qc.invalidateQueries({ queryKey: notificationKeys.all }))
 
     // Private channel: Realtime needs the signed-in user's token before joining.
     supabase.realtime.setAuth().then(() => {
