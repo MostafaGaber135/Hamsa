@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
 
 export type PushStatus =
+  | 'insecure' // not on https: browsers turn push off
   | 'unsupported' // this browser has no Web Push
   | 'needs-install' // iPhone/iPad: only works after "Add to Home Screen"
   | 'not-configured' // the site has no VAPID key yet
@@ -21,6 +22,7 @@ async function currentSubscription() {
 }
 
 export async function getPushStatus(): Promise<PushStatus> {
+  if (!window.isSecureContext) return 'insecure'
   const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
   if (!supported) return isIOS() && !isStandalone() ? 'needs-install' : 'unsupported'
   if (!VAPID_PUBLIC_KEY) return 'not-configured'

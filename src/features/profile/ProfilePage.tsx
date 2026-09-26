@@ -341,6 +341,7 @@ function NotificationsCard() {
   const note: Partial<Record<PushStatus, string>> = {
     on: t.push.on,
     blocked: t.push.blocked,
+    insecure: t.needsHttps,
     unsupported: t.push.unsupported,
     'needs-install': t.push.needsInstall,
     'not-configured': t.push.notConfigured,

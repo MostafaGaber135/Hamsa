@@ -122,7 +122,13 @@ export function Composer({
   const canSend = text.trim().length > 0 || pending.length > 0
   const shownError =
     error ??
-    (recorder.error === 'blocked' ? t.rich.micBlocked : recorder.error === 'unsupported' ? t.rich.micUnsupported : null)
+    (recorder.error === 'blocked'
+      ? t.rich.micBlocked
+      : recorder.error === 'unsupported'
+        ? t.rich.micUnsupported
+        : recorder.error === 'insecure'
+          ? t.needsHttps
+          : null)
   // The field follows the language you type in; empty, it follows the interface.
   const textDir = textDirection(text, dir)
 

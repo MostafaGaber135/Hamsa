@@ -23,7 +23,7 @@ const TICK_MS = 200
 // Chrome/Firefox record WebM/Opus; Safari records MP4/AAC.
 const TYPES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']
 
-type RecorderError = 'blocked' | 'unsupported'
+type RecorderError = 'blocked' | 'unsupported' | 'insecure'
 
 interface Recording {
   file: File
@@ -103,6 +103,11 @@ export function useVoiceRecorder(onLimitReached?: (recording: Recording) => void
 
   const start = useCallback(async () => {
     setError(null)
+    // Browsers only offer the microphone on https (or localhost).
+    if (!window.isSecureContext) {
+      setError('insecure')
+      return
+    }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       setError('unsupported')
       return

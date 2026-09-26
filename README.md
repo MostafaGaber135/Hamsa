@@ -74,7 +74,7 @@ fully bilingual (English / Arabic with real RTL), in light and dark themes.
 
 **Account**
 - Email + password and Google sign-in (one button signs up *and* signs in)
-- Email verification and "forgot password", both with a 6-digit code (a link works too)
+- Email verification with a 6-digit code (a link works too), and "forgot password" with a 6-digit code, then the new password on the same screen
 - Profile page: name, username with a live availability check, photo upload (cropped and resized in the browser), password change
 - Google profile photo imported automatically
 
@@ -251,6 +251,9 @@ Also worth setting:
 - **Analytics → Enable** and **Speed Insights → Enable** in the Vercel project: anonymous page views and
   loading speed (chat ids are removed from URLs before they're sent).
 - `VITE_SENTRY_DSN` (optional): error reports to [Sentry](https://sentry.io). Without it, Sentry isn't even downloaded.
+- `VITE_TURN_URL`, `VITE_TURN_USERNAME`, `VITE_TURN_CREDENTIAL` (optional): a TURN relay from a provider such as
+  [Metered](https://www.metered.ca/stun-turn) or Cloudflare Calls. Without one, a call between two networks that block direct
+  connections (common on mobile data) can't connect. The credentials reach every browser, so use the provider's usage limits.
 
 > For quick local testing, you can turn off **Authentication → Sign In / Providers → Email → Confirm email**.
 

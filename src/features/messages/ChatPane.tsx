@@ -125,7 +125,7 @@ export function ChatPane({
             <IconButton label={t.call.audio} onClick={() => onCall(false)}>
               <Phone size={19} strokeWidth={1.75} />
             </IconButton>
-            <IconButton label={t.call.video} onClick={() => onCall(true)} className="max-sm:hidden">
+            <IconButton label={t.call.video} onClick={() => onCall(true)}>
               <Video size={20} strokeWidth={1.75} />
             </IconButton>
           </>

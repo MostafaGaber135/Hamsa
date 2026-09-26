@@ -6,12 +6,27 @@ import type { User } from '@/types/chat'
  * the two browsers (encrypted by WebRTC); only the signalling (who's calling, and the
  * connection details) travels through the conversation's private Realtime channel.
  *
- * Limits: calls ring only while Hamsa is open, and without a TURN relay server some
- * networks (strict NATs, some mobile carriers) can't connect directly.
+ * Limits: calls ring only while Hamsa is open, and without a TURN relay server (VITE_TURN_URL)
+ * some networks (strict NATs, many mobile carriers) can't connect directly.
  */
 
 /** Public STUN servers: they only help each browser learn its public address. */
-const ICE_SERVERS: RTCIceServer[] = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }]
+const STUN: RTCIceServer = { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }
+/** Optional TURN relay: carries the call when the two networks can't reach each other directly. */
+const TURN_URLS = (import.meta.env.VITE_TURN_URL ?? '')
+  .split(',')
+  .map((url) => url.trim())
+  .filter(Boolean)
+const ICE_SERVERS: RTCIceServer[] = TURN_URLS.length
+  ? [
+      STUN,
+      {
+        urls: TURN_URLS,
+        username: import.meta.env.VITE_TURN_USERNAME,
+        credential: import.meta.env.VITE_TURN_CREDENTIAL,
+      },
+    ]
+  : [STUN]
 const RING_TIMEOUT_MS = 45_000
 const ENDED_NOTICE_MS = 2500
 /** Buzz, pause, buzz, when a call comes in (phones only). */
@@ -96,10 +111,14 @@ export function useCall({ userId, peerOf, send }: Options) {
   )
 
   const getMedia = useCallback(async (video: boolean) => {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: video ? { facingMode: 'user' } : false,
-    })
+    const stream = await navigator.mediaDevices
+      .getUserMedia({ audio: true, video: video ? { facingMode: 'user' } : false })
+      // No camera, or it's busy in another app: the call goes on with sound only.
+      .catch((error: unknown) => {
+        if (!video) throw error
+        return navigator.mediaDevices.getUserMedia({ audio: true })
+      })
+    if (video && stream.getVideoTracks().length === 0) setCameraOff(true)
     local.current = stream
     setLocalStream(stream)
     return stream
